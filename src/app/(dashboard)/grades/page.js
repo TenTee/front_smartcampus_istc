@@ -1,0 +1,1886 @@
+"use client";
+
+import React, { useEffect, useState, useMemo, useRef } from "react";
+import {
+  Box,
+  Typography,
+  Button,
+  Card,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  IconButton,
+  TextField,
+  InputAdornment,
+  Snackbar,
+  Alert,
+  CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TablePagination,
+  Tabs,
+  Tab,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Divider,
+  Grid,
+  Tooltip,
+} from "@mui/material";
+import AddIcon from "@mui/icons-material/Add";
+import SearchIcon from "@mui/icons-material/Search";
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
+import DownloadIcon from "@mui/icons-material/Download";
+import PrintIcon from "@mui/icons-material/Print";
+import AssignmentIcon from "@mui/icons-material/Assignment";
+import PersonIcon from "@mui/icons-material/Person";
+import GridOnIcon from "@mui/icons-material/GridOn";
+import SaveIcon from "@mui/icons-material/Save";
+import RefreshIcon from "@mui/icons-material/Refresh";
+import SummarizeIcon from "@mui/icons-material/Summarize";
+import html2canvas from "html2canvas";
+import { jsPDF } from "jspdf";
+import * as XLSX from "xlsx";
+
+import {
+  notesService,
+  etudiantsService,
+  modulesService,
+  evaluationsService,
+  classesService,
+  filieresV2Service,
+  cyclesService,
+  configurationEtablissementService,
+  parametresGlobauxService,
+} from "../../../services/api/services";
+import { getApiErrorMessage, getMediaUrl } from "../../../services/api/client";
+import { useAcademicYear } from "../../../context/AcademicYearContext";
+import TableSkeleton from "../../../components/common/TableSkeleton";
+import ErrorState from "../../../components/common/ErrorState";
+import GradeFormModal from "../../../components/grades/GradeFormModal";
+import ReleveNotesTemplate from "../../../components/grades/ReleveNotesTemplate";
+import {
+  buildExportWorkbook,
+  getEntityImportConfig,
+  downloadXlsxWorkbook,
+} from "../../../utils/importExportUtils";
+
+const premiumStyles = {
+  container: { p: 4, bgcolor: "#f8fafc", minHeight: "100vh" },
+  header: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    mb: 4,
+    flexWrap: "wrap",
+    gap: 2,
+  },
+  title: {
+    fontWeight: 800,
+    color: "#1e293b",
+    letterSpacing: "-0.02em",
+    fontSize: "2rem",
+  },
+  actionBtn: { borderRadius: "10px", textTransform: "none", fontWeight: 600 },
+  card: {
+    borderRadius: "16px",
+    boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.05)",
+    overflow: "hidden",
+    bgcolor: "white",
+    p: 3,
+    mb: 3,
+  },
+  tableCell: {
+    py: 2,
+    color: "#334155",
+    fontWeight: 500,
+    borderBottom: "1px solid #f1f5f9",
+  },
+  tableHeadCell: {
+    fontWeight: 700,
+    color: "#64748b",
+    textTransform: "uppercase",
+    fontSize: "0.75rem",
+    bgcolor: "#f1f5f9",
+    py: 2,
+  },
+  transcriptHeader: { textAlign: "center", mb: 4 },
+  tabsWrapper: { mb: 4, borderBottom: "1px solid #e2e8f0" },
+  input: {
+    "& .MuiInputBase-root": { borderRadius: "8px" },
+    "& .MuiOutlinedInput-input": { py: 1.5 },
+  },
+};
+
+export default function GradesPage() {
+  const [tabValue, setTabValue] = useState(0);
+  const [notes, setNotes] = useState([]);
+  const [students, setStudents] = useState([]);
+  const [modulesList, setModulesList] = useState([]);
+  const [evaluationsList, setEvaluationsList] = useState([]);
+  const [classesList, setClassesList] = useState([]);
+
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(20);
+
+  const [openModal, setOpenModal] = useState(false);
+  const [openDelete, setOpenDelete] = useState(false);
+  const { selectedYear } = useAcademicYear();
+  const [selectedNote, setSelectedNote] = useState(null);
+
+  const [selectedStudentForTranscript, setSelectedStudentForTranscript] =
+    useState("");
+  const [transcriptFiliere, setTranscriptFiliere] = useState("");
+  const [transcriptCycle, setTranscriptCycle] = useState("");
+  const [transcriptClasse, setTranscriptClasse] = useState("");
+  const [releveData, setReleveData] = useState(null);
+  const [releveLoading, setReleveLoading] = useState(false);
+  const releveRef = useRef(null);
+
+  const [filieresList, setFilieresList] = useState([]);
+  const [cyclesList, setCyclesList] = useState([]);
+
+  // Batch Entry State
+  const [batchParams, setBatchParams] = useState({
+    classe: "",
+    module: "",
+    evaluation: "",
+  });
+  const [batchData, setBatchData] = useState([]);
+  const [batchLoading, setBatchLoading] = useState(false);
+
+  const initialForm = {
+    etudiant: "",
+    module: "",
+    classe: "",
+    note_cc: "",
+    note_sn: "",
+  };
+  const [form, setForm] = useState(initialForm);
+  const [formErrors, setFormErrors] = useState({});
+  const [toast, setToast] = useState({
+    open: false,
+    message: "",
+    severity: "success",
+  });
+  const [config, setConfig] = useState(null);
+  const [gradeParams, setGradeParams] = useState({ pourcentage_cc: 30, pourcentage_sn: 70 });
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const [
+        resNotes,
+        resEtudiants,
+        resModules,
+        resEvals,
+        resClasses,
+        resFilieres,
+        resCycles,
+        resConfig,
+        resParams,
+      ] = await Promise.all([
+        notesService.list().catch(() => []),
+        etudiantsService.list().catch(() => []),
+        modulesService.list().catch(() => []),
+        evaluationsService.list().catch(() => []),
+        classesService.list().catch(() => []),
+        filieresV2Service.list().catch(() => []),
+        cyclesService.list().catch(() => []),
+        configurationEtablissementService.getCurrent().catch(() => null),
+        parametresGlobauxService.getStats().catch(() => null),
+      ]);
+      setNotes(Array.isArray(resNotes) ? resNotes : resNotes?.results || []);
+      setStudents(
+        Array.isArray(resEtudiants)
+          ? resEtudiants
+          : resEtudiants?.results || [],
+      );
+      setModulesList(
+        Array.isArray(resModules) ? resModules : resModules?.results || [],
+      );
+      setEvaluationsList(
+        Array.isArray(resEvals) ? resEvals : resEvals?.results || [],
+      );
+      setClassesList(
+        Array.isArray(resClasses) ? resClasses : resClasses?.results || [],
+      );
+      setFilieresList(
+        Array.isArray(resFilieres) ? resFilieres : resFilieres?.results || [],
+      );
+      setCyclesList(
+        Array.isArray(resCycles) ? resCycles : resCycles?.results || [],
+      );
+      setConfig(resConfig);
+      if (resParams) {
+        const paramsList = Array.isArray(resParams) ? resParams : resParams?.results || [];
+        if (paramsList.length > 0) {
+          setGradeParams({
+            pourcentage_cc: paramsList[0].pourcentage_cc || 30,
+            pourcentage_sn: paramsList[0].pourcentage_sn || 70,
+          });
+        }
+      }
+    } catch (error) {
+      setToast({
+        open: true,
+        message: getApiErrorMessage(error, "Erreur de chargement"),
+        severity: "error",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, [selectedYear?.id]);
+
+  const filteredNotes = useMemo(() => {
+    return notes.filter((n) => {
+      const eName = n.etudiant?.nom || n.etudiant_nom || "";
+      const mName = n.module?.intitule || n.module_nom || "";
+      return (
+        eName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        mName.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    });
+  }, [notes, searchTerm]);
+
+  const filteredModules = useMemo(() => {
+    if (!batchParams.classe) return [];
+    const selectedClasse = classesList.find(
+      (c) => String(c.id) === String(batchParams.classe),
+    );
+    if (!selectedClasse) return [];
+
+    // 1. Modules liés directement à la classe via M2M
+    const directIds = new Set(
+      (selectedClasse.modules || []).map((m) => (typeof m === "object" ? m.id : m)),
+    );
+
+    // 2. Modules liés via CourseAssignment (même filière + niveau)
+    const classeFiliere = selectedClasse.filiere;
+    const classeNiveau = selectedClasse.niveau;
+
+    return modulesList.filter((m) => {
+      if (directIds.has(m.id)) return true;
+      // Check attributions for matching filiere+niveau or classe_id
+      if (m.attributions) {
+        return m.attributions.some(
+          (att) =>
+            String(att.classe_id) === String(selectedClasse.id) ||
+            (String(att.filiere_id || "") === String(classeFiliere) &&
+              String(att.niveau_id || "") === String(classeNiveau)),
+        );
+      }
+      return false;
+    });
+  }, [batchParams.classe, classesList, modulesList]);
+
+  const filteredEvaluations = useMemo(() => {
+    return evaluationsList.filter((ev) => {
+      const matchClasse =
+        !batchParams.classe ||
+        String(ev.classe) === String(batchParams.classe) ||
+        String(ev.classe_id) === String(batchParams.classe);
+      const matchModule =
+        !batchParams.module ||
+        String(ev.module) === String(batchParams.module) ||
+        String(ev.module_id) === String(batchParams.module);
+      return matchClasse && matchModule;
+    });
+  }, [batchParams.classe, batchParams.module, evaluationsList]);
+
+  useEffect(() => {
+    // Reset module and evaluation when class changes
+    setBatchParams((prev) => ({ ...prev, module: "", evaluation: "" }));
+    setBatchData([]);
+  }, [batchParams.classe]);
+
+  // Auto-load batch data when class and module are selected
+  useEffect(() => {
+    if (batchParams.classe && batchParams.module) {
+      fetchBatchData();
+    }
+    // when class or module cleared, clear batchData
+    if (!batchParams.classe || !batchParams.module) {
+      setBatchData([]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [batchParams.classe, batchParams.module]);
+
+  useEffect(() => {
+    // Reset evaluation when module changes
+    setBatchParams((prev) => ({ ...prev, evaluation: "" }));
+    setBatchData([]);
+  }, [batchParams.module]);
+
+  const filteredCyclesForTranscript = useMemo(() => {
+    if (!transcriptFiliere) return [];
+    return cyclesList.filter(
+      (c) => String(c.filiere) === String(transcriptFiliere),
+    );
+  }, [transcriptFiliere, cyclesList]);
+
+  const filteredClassesForTranscript = useMemo(() => {
+    if (!transcriptCycle) return [];
+    return classesList.filter(
+      (c) => String(c.cycle) === String(transcriptCycle),
+    );
+  }, [transcriptCycle, classesList]);
+
+  const filteredStudentsForTranscript = useMemo(() => {
+    if (!transcriptClasse) return [];
+    // Enrolled students in the selected class
+    return students.filter(
+      (s) =>
+        s.inscriptions &&
+        s.inscriptions.some(
+          (ins) => String(ins.classe) === String(transcriptClasse),
+        ),
+    );
+  }, [transcriptClasse, students]);
+
+  const fetchBatchData = async () => {
+    if (!batchParams.classe || !batchParams.module) return;
+    setBatchLoading(true);
+    try {
+      const data = await notesService.batchEntry({
+        classe: batchParams.classe,
+        module: batchParams.module,
+      });
+      setBatchData(
+        data.map((item) => ({
+          ...item,
+          note_cc: item.note_cc || "",
+          note_sn: item.note_sn || "",
+        })),
+      );
+    } catch (error) {
+      setToast({
+        open: true,
+        message: getApiErrorMessage(error),
+        severity: "error",
+      });
+    } finally {
+      setBatchLoading(false);
+    }
+  };
+
+  const handleBatchSave = async () => {
+    setSubmitting(true);
+    try {
+      const payload = {
+        notes: batchData.map((item) => ({
+          etudiant_id: item.etudiant_id,
+          module_id: item.module_id,
+          classe_id: item.classe_id,
+          evaluation_id: item.evaluation_id,
+          note_cc: item.note_cc === "" ? null : item.note_cc,
+          note_sn: item.note_sn === "" ? null : item.note_sn,
+        })),
+      };
+      await notesService.batchSave(payload);
+      setToast({
+        open: true,
+        message: "Toutes les notes ont été enregistrées",
+        severity: "success",
+      });
+      fetchData(); // Refresh global list
+      // Refresh the batch view so updated notes are visible immediately
+      try {
+        await fetchBatchData();
+      } catch (e) {
+        // ignore
+      }
+    } catch (error) {
+      setToast({
+        open: true,
+        message: getApiErrorMessage(error),
+        severity: "error",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleExportModuleNotes = async () => {
+    if (!batchParams.classe || !batchParams.module) {
+      setToast({
+        open: true,
+        message: "Sélectionnez une classe et un module avant d'exporter.",
+        severity: "warning",
+      });
+      return;
+    }
+
+    try {
+      const classeName =
+        classesList.find((c) => String(c.id) === String(batchParams.classe))
+          ?.nom || batchParams.classe;
+      const moduleName =
+        modulesList.find((m) => String(m.id) === String(batchParams.module))
+          ?.nom || batchParams.module;
+      const formateurName =
+        batchData[0]?.formateur_nom || batchData[0]?.formateur || "";
+      const anneeAcad =
+        selectedYear?.nom || selectedYear?.annee || selectedYear?.name || "";
+
+      const headerRows = [
+        ["Classe", classeName],
+        ["Module", moduleName],
+        ["Formateur", formateurName],
+        ["Année académique", anneeAcad],
+        [],
+        ["Matricule", "Note CC", "Note SN", "Note Finale"],
+      ];
+
+      const dataRows = batchData.map((item) => [
+        item.etudiant_matricule || item.matricule || "",
+        item.note_cc === null || item.note_cc === undefined ? "" : item.note_cc,
+        item.note_sn === null || item.note_sn === undefined ? "" : item.note_sn,
+        item.note_finale === null || item.note_finale === undefined
+          ? ""
+          : item.note_finale,
+      ]);
+
+      const sheet = XLSX.utils.aoa_to_sheet([...headerRows, ...dataRows]);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, sheet, "Notes par module");
+
+      downloadXlsxWorkbook(
+        workbook,
+        `notes_module_${classeName.replace(/\s+/g, "_")}_${moduleName.replace(/\s+/g, "_")}.xlsx`,
+      );
+    } catch (error) {
+      console.error(error);
+      setToast({
+        open: true,
+        message: "Erreur lors de l'export des notes par module.",
+        severity: "error",
+      });
+    }
+  };
+
+  const computeNoteFinale = (noteCC, noteSN) => {
+    const cc = parseFloat(noteCC);
+    if (isNaN(cc)) return null;
+    const sn = parseFloat(noteSN) || 0;
+    const total = (cc * gradeParams.pourcentage_cc) + (sn * gradeParams.pourcentage_sn);
+    return (total / 100).toFixed(2);
+  };
+
+  const handleBatchInputChange = (index, field, value) => {
+    const newData = [...batchData];
+    if ((field === "note_cc" || field === "note_sn") && value !== "") {
+      let num = parseFloat(value);
+      if (!isNaN(num)) {
+        if (num > 20) num = 20;
+        if (num < 0) num = 0;
+        value = num;
+      }
+    }
+    newData[index][field] = value;
+    // Recalculate note_finale locally
+    newData[index].note_finale = computeNoteFinale(
+      field === "note_cc" ? value : newData[index].note_cc,
+      field === "note_sn" ? value : newData[index].note_sn,
+    );
+    setBatchData(newData);
+  };
+
+  const handleSave = async () => {
+    if (!validateForm()) return;
+    setSubmitting(true);
+    try {
+      const payload = {
+        etudiant: form.etudiant,
+        module: form.module,
+        classe: form.classe || null,
+        note_cc: form.note_cc === "" ? null : parseFloat(form.note_cc) || null,
+        note_sn: form.note_sn === "" ? null : parseFloat(form.note_sn) || null,
+      };
+      if (form.id) {
+        await notesService.update(form.id, payload);
+        setToast({ open: true, message: "Note modifiée", severity: "success" });
+      } else {
+        await notesService.create(payload);
+        setToast({ open: true, message: "Note ajoutée", severity: "success" });
+      }
+      setOpenModal(false);
+      fetchData();
+    } catch (error) {
+      setToast({
+        open: true,
+        message: getApiErrorMessage(error),
+        severity: "error",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const validateForm = () => {
+    let errors = {};
+    if (!form.etudiant) errors.etudiant = "Requis";
+    if (!form.module) errors.module = "Requis";
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleEdit = (note) => {
+    setForm({
+      id: note.id,
+      etudiant: note.etudiant?.id || note.etudiant,
+      module: note.module?.id || note.module,
+      classe: note.classe?.id || note.classe || "",
+      note_cc: note.note_cc || "",
+      note_sn: note.note_sn || "",
+    });
+    setFormErrors({});
+    setOpenModal(true);
+  };
+
+  const handleDelete = async () => {
+    if (!selectedNote) return;
+    try {
+      await notesService.remove(selectedNote.id);
+      setToast({ open: true, message: "Note supprimée", severity: "success" });
+      fetchData();
+    } catch (error) {
+      setToast({
+        open: true,
+        message: getApiErrorMessage(error),
+        severity: "error",
+      });
+    } finally {
+      setOpenDelete(false);
+    }
+  };
+
+  const fetchReleveNotes = async (etudiantId) => {
+    if (!etudiantId) return;
+    setReleveLoading(true);
+    try {
+      const res = await notesService.releveNotes(etudiantId);
+      setReleveData(res);
+    } catch (err) {
+      console.error("Erreur chargement relevé:", err);
+      setToast({ open: true, message: "Erreur lors du chargement du relevé", severity: "error" });
+      setReleveData(null);
+    } finally {
+      setReleveLoading(false);
+    }
+  };
+
+  const handleDownloadTranscript = async () => {
+    const element = releveRef.current;
+    if (!element) return;
+    try {
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+      });
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF("p", "mm", "a4");
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      let position = 0;
+      const pageHeight = pdf.internal.pageSize.getHeight();
+
+      if (pdfHeight <= pageHeight) {
+        pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+      } else {
+        while (position < pdfHeight) {
+          pdf.addImage(imgData, "PNG", 0, -position, pdfWidth, pdfHeight);
+          position += pageHeight;
+          if (position < pdfHeight) pdf.addPage();
+        }
+      }
+
+      const studentName = releveData?.etudiant?.nom?.replace(/\s+/g, "_") || "etudiant";
+      pdf.save(`releve_notes_${studentName}.pdf`);
+    } catch (err) {
+      console.error("Erreur génération PDF:", err);
+      setToast({
+        open: true,
+        message: "Erreur lors de la génération du PDF",
+        severity: "error",
+      });
+    }
+  };
+
+  const activeStudentObj = useMemo(() => {
+    return students.find(
+      (s) => String(s.id) === String(selectedStudentForTranscript),
+    );
+  }, [students, selectedStudentForTranscript]);
+
+  const studentTranscriptNotes = useMemo(() => {
+    if (!selectedStudentForTranscript) return [];
+    return notes.filter((n) => {
+      const estId = n.etudiant?.id || n.etudiant || n.etudiant_id;
+      return String(estId) === String(selectedStudentForTranscript);
+    });
+  }, [notes, selectedStudentForTranscript]);
+
+  const generalAverage = useMemo(() => {
+    if (!studentTranscriptNotes.length) return 0;
+    const total = studentTranscriptNotes.reduce(
+      (acc, curr) => acc + parseFloat(curr.note_finale || curr.moyenne || 0),
+      0,
+    );
+    return (total / studentTranscriptNotes.length).toFixed(2);
+  }, [studentTranscriptNotes]);
+
+  const transcriptBySemester = useMemo(() => {
+    const groups = {
+      "Semestre 1": [],
+      "Semestre 2": [],
+    };
+
+    studentTranscriptNotes.forEach((note) => {
+      const semestre = note.module_semestre || note.session || "Semestre 1";
+      if (!groups[semestre]) {
+        groups[semestre] = [];
+      }
+      groups[semestre].push(note);
+    });
+
+    return Object.entries(groups).filter(([, items]) => items.length > 0);
+  }, [studentTranscriptNotes]);
+
+  const semesterAverage = (items) => {
+    if (!items.length) return null;
+    const total = items.reduce(
+      (acc, curr) => acc + parseFloat(curr.note_finale || curr.moyenne || 0),
+      0,
+    );
+    return (total / items.length).toFixed(2);
+  };
+
+  return (
+    <Box sx={premiumStyles.container} className="grades-page">
+      {/* <Box sx={premiumStyles.header} className="no-print">
+        <Typography variant="h4" sx={premiumStyles.title}>Gestion des Notes</Typography>
+        
+        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+          <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={() => { setForm(initialForm); setFormErrors({}); setOpenModal(true); }} sx={{ ...premiumStyles.actionBtn, bgcolor: '#4f46e5' }}>
+            Ajouter une Note
+          </Button>
+        </Box>
+      </Box> */}
+
+      <Box sx={premiumStyles.tabsWrapper} className="no-print">
+        <Tabs
+          value={tabValue}
+          onChange={(e, val) => setTabValue(val)}
+          TabIndicatorProps={{
+            style: { backgroundColor: "#4f46e5", height: 3 },
+          }}
+        >
+          {/* <Tab icon={<AssignmentIcon />} iconPosition="start" label="Vue Globale" sx={{ textTransform: 'none', fontWeight: 600 }} /> */}
+          <Tab
+            icon={<GridOnIcon />}
+            iconPosition="start"
+            label="Saisie par Cours"
+            sx={{ textTransform: "none", fontWeight: 600 }}
+          />
+          <Tab
+            icon={<PersonIcon />}
+            iconPosition="start"
+            label="Relevés par Étudiant"
+            sx={{ textTransform: "none", fontWeight: 600 }}
+          />
+          <Tab
+            icon={<SummarizeIcon />}
+            iconPosition="start"
+            label="Récapitulatif par Classe"
+            sx={{ textTransform: "none", fontWeight: 600 }}
+          />
+        </Tabs>
+      </Box>
+
+      {tabValue === 0 && (
+        <Box>
+          <Card sx={{ ...premiumStyles.card, mb: 3 }}>
+            <Typography
+              variant="h6"
+              fontWeight={700}
+              gutterBottom
+              sx={{ mb: 3 }}
+            >
+              Sélection du Cours
+            </Typography>
+            <Grid container spacing={3} alignItems="flex-end">
+              <Grid item xs={12} md={3}>
+                <FormControl fullWidth>
+                  <InputLabel>Classe</InputLabel>
+                  <Select
+                    value={batchParams.classe}
+                    label="Classe"
+                    onChange={(e) =>
+                      setBatchParams({ ...batchParams, classe: e.target.value })
+                    }
+                  >
+                    {classesList.map((c) => (
+                      <MenuItem key={c.id} value={c.id}>
+                        {c.nom}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <FormControl fullWidth>
+                  <InputLabel>Module / Matière</InputLabel>
+                  <Select
+                    value={batchParams.module}
+                    label="Module / Matière"
+                    onChange={(e) =>
+                      setBatchParams({ ...batchParams, module: e.target.value })
+                    }
+                    disabled={!batchParams.classe}
+                  >
+                    {filteredModules.map((m) => (
+                      <MenuItem key={m.id} value={m.id}>
+                        {m.nom}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              <Grid item xs={12} md={3}>
+                <Button
+                  variant="contained"
+                  fullWidth
+                  size="large"
+                  startIcon={<RefreshIcon />}
+                  onClick={fetchBatchData}
+                  disabled={
+                    !batchParams.classe || !batchParams.module || batchLoading
+                  }
+                  sx={{ height: 56, borderRadius: "10px", bgcolor: "#4f46e5" }}
+                >
+                  Charger la Liste
+                </Button>
+              </Grid>
+            </Grid>
+          </Card>
+
+          {batchData.length > 0 ? (
+            <Card sx={premiumStyles.card}>
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  mb: 3,
+                }}
+              >
+                <Typography variant="h6" fontWeight={700}>
+                  Saisie des Notes
+                </Typography>
+                <Box
+                  sx={{
+                    display: "flex",
+                    gap: 1,
+                    flexWrap: "wrap",
+                    alignItems: "center",
+                  }}
+                >
+                  <Button
+                    variant="outlined"
+                    startIcon={<DownloadIcon />}
+                    onClick={handleExportModuleNotes}
+                    disabled={!batchData.length}
+                    sx={{
+                      ...premiumStyles.actionBtn,
+                      color: "#334155",
+                      borderColor: "#cbd5e1",
+                    }}
+                  >
+                    Exporter par Module
+                  </Button>
+                  <Button
+                    variant="contained"
+                    color="success"
+                    startIcon={<SaveIcon />}
+                    onClick={handleBatchSave}
+                    disabled={submitting}
+                    sx={premiumStyles.actionBtn}
+                  >
+                    {submitting ? "Enregistrement..." : "Enregistrer tout"}
+                  </Button>
+                </Box>
+              </Box>
+
+              <Box
+                sx={{
+                  mb: 3,
+                  display: "flex",
+                  gap: 4,
+                  alignItems: "center",
+                  bgcolor: "#f8fafc",
+                  p: 2,
+                  borderRadius: "8px",
+                }}
+              >
+                <Box>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ display: "block" }}
+                  >
+                    Classe
+                  </Typography>
+                  <Typography variant="body1" fontWeight={600}>
+                    {
+                      classesList.find(
+                        (c) => String(c.id) === String(batchParams.classe),
+                      )?.nom
+                    }
+                  </Typography>
+                </Box>
+                <Box>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ display: "block" }}
+                  >
+                    Module
+                  </Typography>
+                  <Typography variant="body1" fontWeight={600}>
+                    {
+                      modulesList.find(
+                        (m) => String(m.id) === String(batchParams.module),
+                      )?.nom
+                    }
+                  </Typography>
+                </Box>
+                <Box>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ display: "block" }}
+                  >
+                    Formateur
+                  </Typography>
+                  <Typography variant="body1" fontWeight={600} color="primary">
+                    {batchData[0]?.formateur_nom || "Non assigné"}
+                  </Typography>
+                </Box>
+                {batchParams.evaluation && (
+                  <Box>
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ display: "block" }}
+                    >
+                      Évaluation
+                    </Typography>
+                    <Typography variant="body1" fontWeight={600}>
+                      {
+                        evaluationsList.find(
+                          (e) =>
+                            String(e.id) === String(batchParams.evaluation),
+                        )?.libelle
+                      }
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
+
+              <TableContainer>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell sx={premiumStyles.tableHeadCell}>
+                        Matricule
+                      </TableCell>
+                      <TableCell sx={premiumStyles.tableHeadCell}>
+                        Nom Complet
+                      </TableCell>
+                      <TableCell sx={premiumStyles.tableHeadCell} width={150}>
+                        Note CC / 20
+                      </TableCell>
+                      <TableCell sx={premiumStyles.tableHeadCell} width={150}>
+                        Note SN / 20
+                      </TableCell>
+                      <TableCell sx={premiumStyles.tableHeadCell}>
+                        Note Finale
+                      </TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {batchData.map((row, index) => (
+                      <TableRow key={row.etudiant_id} hover>
+                        <TableCell sx={premiumStyles.tableCell}>
+                          {row.etudiant_matricule}
+                        </TableCell>
+                        <TableCell
+                          sx={{ ...premiumStyles.tableCell, fontWeight: 600 }}
+                        >
+                          {row.etudiant_nom}
+                        </TableCell>
+                        <TableCell sx={premiumStyles.tableCell}>
+                          <TextField
+                            size="small"
+                            type="number"
+                            value={row.note_cc}
+                            onChange={(e) =>
+                              handleBatchInputChange(
+                                index,
+                                "note_cc",
+                                e.target.value,
+                              )
+                            }
+                            inputProps={{ min: 0, max: 20, step: 0.25 }}
+                            sx={premiumStyles.input}
+                          />
+                        </TableCell>
+                        <TableCell sx={premiumStyles.tableCell}>
+                          <TextField
+                            size="small"
+                            type="number"
+                            value={row.note_sn}
+                            onChange={(e) =>
+                              handleBatchInputChange(
+                                index,
+                                "note_sn",
+                                e.target.value,
+                              )
+                            }
+                            inputProps={{ min: 0, max: 20, step: 0.25 }}
+                            sx={premiumStyles.input}
+                          />
+                        </TableCell>
+                        <TableCell
+                          sx={{
+                            ...premiumStyles.tableCell,
+                            fontWeight: 700,
+                            color: "#10b981",
+                          }}
+                        >
+                          {row.note_finale || "-"}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Card>
+          ) : batchLoading ? (
+            <TableSkeleton rows={6} columns={6} />
+          ) : (
+            <Box sx={{ py: 10, textAlign: "center", color: "#94a3b8" }}>
+              <AssignmentIcon sx={{ fontSize: 64, opacity: 0.2, mb: 2 }} />
+              <Typography variant="h6">
+                Sélectionnez une classe et un module pour commencer la saisie.
+              </Typography>
+            </Box>
+          )}
+        </Box>
+      )}
+
+      {tabValue === 1 && (
+        <Card sx={premiumStyles.card}>
+          <Box className="no-print" sx={{ mb: 4 }}>
+            <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>
+              Génération du Relevé de Notes
+            </Typography>
+            <Grid container spacing={2} alignItems="center">
+              <Grid item xs={12} md={3}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>Filière</InputLabel>
+                  <Select
+                    value={transcriptFiliere}
+                    label="Filière"
+                    onChange={(e) => {
+                      setTranscriptFiliere(e.target.value);
+                      setTranscriptCycle("");
+                      setTranscriptClasse("");
+                      setSelectedStudentForTranscript("");
+                      setReleveData(null);
+                    }}
+                  >
+                    <MenuItem value="">
+                      <em>Toutes</em>
+                    </MenuItem>
+                    {filieresList.map((f) => (
+                      <MenuItem key={f.id} value={f.id}>
+                        {f.nom}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <FormControl fullWidth size="small" disabled={!transcriptFiliere}>
+                  <InputLabel>Cycle</InputLabel>
+                  <Select
+                    value={transcriptCycle}
+                    label="Cycle"
+                    onChange={(e) => {
+                      setTranscriptCycle(e.target.value);
+                      setTranscriptClasse("");
+                      setSelectedStudentForTranscript("");
+                      setReleveData(null);
+                    }}
+                  >
+                    <MenuItem value="">
+                      <em>Sélectionner</em>
+                    </MenuItem>
+                    {filteredCyclesForTranscript.map((c) => (
+                      <MenuItem key={c.id} value={c.id}>
+                        {c.nom}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <FormControl fullWidth size="small" disabled={!transcriptCycle}>
+                  <InputLabel>Classe</InputLabel>
+                  <Select
+                    value={transcriptClasse}
+                    label="Classe"
+                    onChange={(e) => {
+                      setTranscriptClasse(e.target.value);
+                      setSelectedStudentForTranscript("");
+                      setReleveData(null);
+                    }}
+                  >
+                    <MenuItem value="">
+                      <em>Sélectionner</em>
+                    </MenuItem>
+                    {filteredClassesForTranscript.map((c) => (
+                      <MenuItem key={c.id} value={c.id}>
+                        {c.nom}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <FormControl fullWidth size="small" disabled={!transcriptClasse}>
+                  <InputLabel>Étudiant</InputLabel>
+                  <Select
+                    value={selectedStudentForTranscript}
+                    label="Étudiant"
+                    onChange={(e) => {
+                      setSelectedStudentForTranscript(e.target.value);
+                      setReleveData(null);
+                    }}
+                  >
+                    <MenuItem value="">
+                      <em>Sélectionner</em>
+                    </MenuItem>
+                    {filteredStudentsForTranscript.map((s) => (
+                      <MenuItem key={s.id} value={s.id}>
+                        {s.nom} {s.prenom}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+            </Grid>
+
+            {selectedStudentForTranscript && (
+              <Box sx={{ mt: 3, display: "flex", justifyContent: "flex-end", gap: 2 }}>
+                <Button
+                  variant="outlined"
+                  startIcon={<RefreshIcon />}
+                  onClick={() => fetchReleveNotes(selectedStudentForTranscript)}
+                  disabled={releveLoading}
+                >
+                  {releveLoading ? "Chargement..." : "Générer le Relevé"}
+                </Button>
+                {releveData && (
+                  <Button
+                    variant="contained"
+                    startIcon={<DownloadIcon />}
+                    onClick={handleDownloadTranscript}
+                    sx={{ bgcolor: "#4f46e5" }}
+                  >
+                    Télécharger PDF
+                  </Button>
+                )}
+              </Box>
+            )}
+          </Box>
+
+          {releveLoading ? (
+            <Box sx={{ py: 8, textAlign: "center" }}>
+              <CircularProgress />
+              <Typography sx={{ mt: 2 }}>Chargement du relevé...</Typography>
+            </Box>
+          ) : releveData ? (
+            <Box sx={{ overflow: "auto" }}>
+              <ReleveNotesTemplate ref={releveRef} data={releveData} />
+            </Box>
+          ) : selectedStudentForTranscript ? (
+            <Box sx={{ py: 8, textAlign: "center", color: "#94a3b8" }}>
+              <AssignmentIcon sx={{ fontSize: 64, opacity: 0.2, mb: 2 }} />
+              <Typography variant="h6">
+                Cliquez sur &quot;Générer le Relevé&quot; pour afficher le relevé de notes.
+              </Typography>
+            </Box>
+          ) : (
+            <Box sx={{ py: 8, textAlign: "center", color: "#94a3b8" }}>
+              <PersonIcon sx={{ fontSize: 64, opacity: 0.2, mb: 2 }} />
+              <Typography variant="h6">
+                Veuillez sélectionner un étudiant pour afficher son relevé.
+              </Typography>
+            </Box>
+          )}
+        </Card>
+      )}
+
+      {tabValue === 2 &&
+        (() => {
+          // --- Filtres cascade pour le récapitulatif ---
+          const recapFilieres = filieresList;
+          const recapCycles = transcriptFiliere
+            ? cyclesList.filter(
+                (c) => String(c.filiere) === String(transcriptFiliere),
+              )
+            : [];
+          const recapClasses = transcriptCycle
+            ? classesList.filter(
+                (c) => String(c.cycle) === String(transcriptCycle),
+              )
+            : [];
+
+          // Étudiants inscrits dans la classe sélectionnée
+          const classStudents = transcriptClasse
+            ? students
+                .filter(
+                  (s) =>
+                    s.inscriptions &&
+                    s.inscriptions.some(
+                      (ins) => String(ins.classe) === String(transcriptClasse),
+                    ),
+                )
+                .sort((a, b) => (a.nom || "").localeCompare(b.nom || ""))
+            : [];
+
+          // Modules rattachés à cette classe (via M2M direct + CourseAssignment)
+          const selectedClasseObj = classesList.find(
+            (c) => String(c.id) === String(transcriptClasse),
+          );
+          const directModuleIds = new Set(
+            (selectedClasseObj?.modules || []).map((m) =>
+              typeof m === "object" ? m.id : m,
+            ),
+          );
+          const classeFiliere = selectedClasseObj?.filiere;
+          const classeNiveau = selectedClasseObj?.niveau;
+          const classModules = modulesList.filter((m) => {
+            if (directModuleIds.has(m.id)) return true;
+            if (m.attributions) {
+              return m.attributions.some(
+                (att) =>
+                  String(att.classe_id) === String(transcriptClasse) ||
+                  (String(att.filiere_id || "") === String(classeFiliere) &&
+                    String(att.niveau_id || "") === String(classeNiveau)),
+              );
+            }
+            return false;
+          });
+
+          // Notes de la classe
+          const classNotes = transcriptClasse
+            ? notes.filter(
+                (n) =>
+                  String(n.classe || n.classe_id) === String(transcriptClasse),
+              )
+            : [];
+
+          // Construire la matrice étudiant → module → note
+          const getNote = (studentId, moduleId) => {
+            return classNotes.find(
+              (n) =>
+                String(n.etudiant?.id || n.etudiant || n.etudiant_id) ===
+                  String(studentId) &&
+                String(n.module?.id || n.module || n.module_id) ===
+                  String(moduleId),
+            );
+          };
+
+          const getStudentAverage = (studentId) => {
+            const studentNotes = classNotes.filter(
+              (n) =>
+                String(n.etudiant?.id || n.etudiant || n.etudiant_id) ===
+                  String(studentId) && n.note_finale != null,
+            );
+            if (studentNotes.length === 0) return null;
+            const total = studentNotes.reduce(
+              (acc, n) => acc + parseFloat(n.note_finale || 0),
+              0,
+            );
+            return (total / studentNotes.length).toFixed(2);
+          };
+
+          const getMention = (avg) => {
+            if (avg === null) return "--";
+            const v = parseFloat(avg);
+            if (v < 10) return "Échec";
+            if (v < 12) return "Passable";
+            if (v < 14) return "Assez Bien";
+            if (v < 16) return "Bien";
+            return "Très Bien";
+          };
+
+          const getMentionColor = (avg) => {
+            if (avg === null) return "#94a3b8";
+            const v = parseFloat(avg);
+            if (v < 10) return "#ef4444";
+            if (v < 12) return "#f59e0b";
+            if (v < 14) return "#3b82f6";
+            if (v < 16) return "#10b981";
+            return "#8b5cf6";
+          };
+
+          // Classement
+          const rankedStudents = classStudents
+            .map((s) => ({
+              ...s,
+              avg: getStudentAverage(s.id),
+            }))
+            .sort((a, b) => {
+              if (a.avg === null && b.avg === null) return 0;
+              if (a.avg === null) return 1;
+              if (b.avg === null) return -1;
+              return parseFloat(b.avg) - parseFloat(a.avg);
+            });
+
+          return (
+            <Box>
+              <Card sx={{ ...premiumStyles.card, mb: 3 }} className="no-print">
+                <Typography variant="h6" fontWeight={700} gutterBottom>
+                  Sélection de la classe
+                </Typography>
+                <Grid container spacing={2} alignItems="center">
+                  <Grid item xs={12} md={4}>
+                    <FormControl fullWidth size="small">
+                      <InputLabel>Filière</InputLabel>
+                      <Select
+                        value={transcriptFiliere}
+                        label="Filière"
+                        onChange={(e) => {
+                          setTranscriptFiliere(e.target.value);
+                          setTranscriptCycle("");
+                          setTranscriptClasse("");
+                        }}
+                      >
+                        <MenuItem value="">
+                          <em>Sélectionner</em>
+                        </MenuItem>
+                        {recapFilieres.map((f) => (
+                          <MenuItem key={f.id} value={f.id}>
+                            {f.nom}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12} md={4}>
+                    <FormControl
+                      fullWidth
+                      size="small"
+                      disabled={!transcriptFiliere}
+                    >
+                      <InputLabel>Cycle</InputLabel>
+                      <Select
+                        value={transcriptCycle}
+                        label="Cycle"
+                        onChange={(e) => {
+                          setTranscriptCycle(e.target.value);
+                          setTranscriptClasse("");
+                        }}
+                      >
+                        <MenuItem value="">
+                          <em>Sélectionner</em>
+                        </MenuItem>
+                        {recapCycles.map((c) => (
+                          <MenuItem key={c.id} value={c.id}>
+                            {c.nom}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12} md={4}>
+                    <FormControl
+                      fullWidth
+                      size="small"
+                      disabled={!transcriptCycle}
+                    >
+                      <InputLabel>Classe</InputLabel>
+                      <Select
+                        value={transcriptClasse}
+                        label="Classe"
+                        onChange={(e) => setTranscriptClasse(e.target.value)}
+                      >
+                        <MenuItem value="">
+                          <em>Sélectionner</em>
+                        </MenuItem>
+                        {recapClasses.map((c) => (
+                          <MenuItem key={c.id} value={c.id}>
+                            {c.nom}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                </Grid>
+
+                {transcriptClasse && classStudents.length > 0 && (
+                  <Box
+                    sx={{ mt: 3, display: "flex", justifyContent: "flex-end" }}
+                  >
+                    <Button
+                      variant="contained"
+                      startIcon={<DownloadIcon />}
+                      onClick={async () => {
+                        const element = document.getElementById(
+                          "printable-class-recap",
+                        );
+                        if (!element) return;
+                        try {
+                          const canvas = await html2canvas(element, {
+                            scale: 2,
+                            useCORS: true,
+                            backgroundColor: "#ffffff",
+                          });
+                          const imgData = canvas.toDataURL("image/png");
+                          const pdf = new jsPDF("l", "mm", "a4");
+                          const pdfWidth = pdf.internal.pageSize.getWidth();
+                          const pdfHeight =
+                            (canvas.height * pdfWidth) / canvas.width;
+                          const pageHeight = pdf.internal.pageSize.getHeight();
+                          let position = 0;
+                          if (pdfHeight <= pageHeight) {
+                            pdf.addImage(
+                              imgData,
+                              "PNG",
+                              0,
+                              0,
+                              pdfWidth,
+                              pdfHeight,
+                            );
+                          } else {
+                            while (position < pdfHeight) {
+                              pdf.addImage(
+                                imgData,
+                                "PNG",
+                                0,
+                                -position,
+                                pdfWidth,
+                                pdfHeight,
+                              );
+                              position += pageHeight;
+                              if (position < pdfHeight) pdf.addPage();
+                            }
+                          }
+                          const classeName = (
+                            selectedClasseObj?.nom || "classe"
+                          ).replace(/\s+/g, "_");
+                          pdf.save(`recapitulatif_notes_${classeName}.pdf`);
+                        } catch (err) {
+                          console.error("Erreur génération PDF:", err);
+                          setToast({
+                            open: true,
+                            message: "Erreur lors de la génération du PDF",
+                            severity: "error",
+                          });
+                        }
+                      }}
+                      sx={{
+                        bgcolor: "#4f46e5",
+                        borderRadius: "10px",
+                        textTransform: "none",
+                        fontWeight: 600,
+                      }}
+                    >
+                      Télécharger le Récapitulatif (PDF)
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      startIcon={<DownloadIcon />}
+                      sx={{ ml: 1, textTransform: "none" }}
+                      onClick={async () => {
+                        if (!transcriptClasse) {
+                          setToast({
+                            open: true,
+                            message: "Sélectionnez une classe avant d'exporter",
+                            severity: "warning",
+                          });
+                          return;
+                        }
+                        try {
+                          const data = await notesService.list({
+                            classe: transcriptClasse,
+                          });
+                          const items = Array.isArray(data)
+                            ? data
+                            : data?.results || data?.data || [];
+                          const cfg = getEntityImportConfig("notes");
+                          const lookupData = {};
+                          const workbook = buildExportWorkbook(
+                            "notes",
+                            items,
+                            cfg,
+                            lookupData,
+                          );
+                          const classeName = (
+                            selectedClasseObj?.nom || transcriptClasse
+                          ).replace(/\s+/g, "_");
+                          downloadXlsxWorkbook(
+                            workbook,
+                            `notes_classe_${classeName}.xlsx`,
+                          );
+                        } catch (err) {
+                          console.error(err);
+                          setToast({
+                            open: true,
+                            message: "Erreur lors de l'export des notes",
+                            severity: "error",
+                          });
+                        }
+                      }}
+                    >
+                      Exporter (Excel)
+                    </Button>
+                  </Box>
+                )}
+              </Card>
+
+              {transcriptClasse ? (
+                classStudents.length === 0 ? (
+                  <Box sx={{ py: 8, textAlign: "center", color: "#94a3b8" }}>
+                    <SummarizeIcon sx={{ fontSize: 64, opacity: 0.2, mb: 2 }} />
+                    <Typography variant="h6">
+                      Aucun étudiant inscrit dans cette classe.
+                    </Typography>
+                  </Box>
+                ) : (
+                  <Card sx={premiumStyles.card} id="printable-class-recap">
+                    <Box sx={{ textAlign: "center", mb: 3 }}>
+                      <Typography variant="h5" fontWeight={800} gutterBottom>
+                        Récapitulatif des Notes
+                      </Typography>
+                      <Typography variant="h6" color="text.secondary">
+                        {selectedClasseObj?.nom || "Classe"}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Généré le {new Date().toLocaleDateString("fr-FR")} —{" "}
+                        {classStudents.length} étudiant(s) —{" "}
+                        {classModules.length} module(s)
+                      </Typography>
+                    </Box>
+
+                    <Divider sx={{ mb: 3 }} />
+
+                    <TableContainer sx={{ maxHeight: 600 }}>
+                      <Table stickyHeader size="small">
+                        <TableHead>
+                          <TableRow>
+                            <TableCell
+                              sx={{
+                                ...premiumStyles.tableHeadCell,
+                                position: "sticky",
+                                left: 0,
+                                zIndex: 3,
+                                bgcolor: "#f1f5f9",
+                                minWidth: 40,
+                              }}
+                            >
+                              #
+                            </TableCell>
+                            <TableCell
+                              sx={{
+                                ...premiumStyles.tableHeadCell,
+                                position: "sticky",
+                                left: 40,
+                                zIndex: 3,
+                                bgcolor: "#f1f5f9",
+                                minWidth: 80,
+                              }}
+                            >
+                              Matricule
+                            </TableCell>
+                            <TableCell
+                              sx={{
+                                ...premiumStyles.tableHeadCell,
+                                position: "sticky",
+                                left: 120,
+                                zIndex: 3,
+                                bgcolor: "#f1f5f9",
+                                minWidth: 160,
+                              }}
+                            >
+                              Nom
+                            </TableCell>
+                            {classModules.map((m) => (
+                              <TableCell
+                                key={m.id}
+                                sx={{
+                                  ...premiumStyles.tableHeadCell,
+                                  minWidth: 80,
+                                  textAlign: "center",
+                                }}
+                              >
+                                <Tooltip title={m.nom} arrow>
+                                  <span>
+                                    {(m.nom || "").length > 12
+                                      ? (m.nom || "").substring(0, 12) + "…"
+                                      : m.nom}
+                                  </span>
+                                </Tooltip>
+                              </TableCell>
+                            ))}
+                            <TableCell
+                              sx={{
+                                ...premiumStyles.tableHeadCell,
+                                minWidth: 80,
+                                textAlign: "center",
+                                bgcolor: "#e0f2fe",
+                              }}
+                            >
+                              Moyenne
+                            </TableCell>
+                            <TableCell
+                              sx={{
+                                ...premiumStyles.tableHeadCell,
+                                minWidth: 80,
+                                textAlign: "center",
+                                bgcolor: "#e0f2fe",
+                              }}
+                            >
+                              Rang
+                            </TableCell>
+                            <TableCell
+                              sx={{
+                                ...premiumStyles.tableHeadCell,
+                                minWidth: 90,
+                                textAlign: "center",
+                                bgcolor: "#e0f2fe",
+                              }}
+                            >
+                              Mention
+                            </TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {rankedStudents.map((student, idx) => {
+                            const avg = student.avg;
+                            const mention = getMention(avg);
+                            return (
+                              <TableRow
+                                key={student.id}
+                                hover
+                                sx={
+                                  avg !== null && parseFloat(avg) < 10
+                                    ? { bgcolor: "#fef2f2" }
+                                    : {}
+                                }
+                              >
+                                <TableCell
+                                  sx={{
+                                    ...premiumStyles.tableCell,
+                                    position: "sticky",
+                                    left: 0,
+                                    bgcolor: "white",
+                                    zIndex: 1,
+                                    fontWeight: 600,
+                                  }}
+                                >
+                                  {idx + 1}
+                                </TableCell>
+                                <TableCell
+                                  sx={{
+                                    ...premiumStyles.tableCell,
+                                    position: "sticky",
+                                    left: 40,
+                                    bgcolor: "white",
+                                    zIndex: 1,
+                                    fontSize: "0.75rem",
+                                  }}
+                                >
+                                  {student.matricule || "-"}
+                                </TableCell>
+                                <TableCell
+                                  sx={{
+                                    ...premiumStyles.tableCell,
+                                    position: "sticky",
+                                    left: 120,
+                                    bgcolor: "white",
+                                    zIndex: 1,
+                                    fontWeight: 600,
+                                  }}
+                                >
+                                  {student.nom || "-"}
+                                </TableCell>
+                                {classModules.map((m) => {
+                                  const noteObj = getNote(student.id, m.id);
+                                  const nf = noteObj?.note_finale;
+                                  return (
+                                    <TableCell
+                                      key={m.id}
+                                      sx={{
+                                        ...premiumStyles.tableCell,
+                                        textAlign: "center",
+                                        fontWeight: 500,
+                                        color:
+                                          nf != null && parseFloat(nf) < 10
+                                            ? "#ef4444"
+                                            : "#334155",
+                                      }}
+                                    >
+                                      {nf != null
+                                        ? parseFloat(nf).toFixed(2)
+                                        : "-"}
+                                    </TableCell>
+                                  );
+                                })}
+                                <TableCell
+                                  sx={{
+                                    ...premiumStyles.tableCell,
+                                    textAlign: "center",
+                                    fontWeight: 800,
+                                    fontSize: "0.95rem",
+                                    color: getMentionColor(avg),
+                                  }}
+                                >
+                                  {avg !== null ? avg : "-"}
+                                </TableCell>
+                                <TableCell
+                                  sx={{
+                                    ...premiumStyles.tableCell,
+                                    textAlign: "center",
+                                    fontWeight: 700,
+                                  }}
+                                >
+                                  {avg !== null
+                                    ? `${idx + 1}/${rankedStudents.filter((s) => s.avg !== null).length}`
+                                    : "-"}
+                                </TableCell>
+                                <TableCell
+                                  sx={{
+                                    ...premiumStyles.tableCell,
+                                    textAlign: "center",
+                                    fontWeight: 600,
+                                    color: getMentionColor(avg),
+                                  }}
+                                >
+                                  {mention}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+
+                    {/* Statistiques de classe */}
+                    {(() => {
+                      const avgs = rankedStudents
+                        .map((s) => s.avg)
+                        .filter((a) => a !== null)
+                        .map((a) => parseFloat(a));
+                      if (avgs.length === 0) return null;
+                      const classAvg = (
+                        avgs.reduce((a, b) => a + b, 0) / avgs.length
+                      ).toFixed(2);
+                      const maxAvg = Math.max(...avgs).toFixed(2);
+                      const minAvg = Math.min(...avgs).toFixed(2);
+                      const successCount = avgs.filter((a) => a >= 10).length;
+                      const successRate = (
+                        (successCount / avgs.length) *
+                        100
+                      ).toFixed(1);
+
+                      return (
+                        <Grid container spacing={2} sx={{ mt: 3 }}>
+                          <Grid item xs={6} md={3}>
+                            <Card
+                              sx={{
+                                p: 2,
+                                bgcolor: "#f0fdf4",
+                                border: "1px solid #bbf7d0",
+                                borderRadius: "12px",
+                                textAlign: "center",
+                              }}
+                            >
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                              >
+                                Moyenne de classe
+                              </Typography>
+                              <Typography
+                                variant="h5"
+                                fontWeight={800}
+                                color="#10b981"
+                              >
+                                {classAvg}
+                              </Typography>
+                            </Card>
+                          </Grid>
+                          <Grid item xs={6} md={3}>
+                            <Card
+                              sx={{
+                                p: 2,
+                                bgcolor: "#eff6ff",
+                                border: "1px solid #bfdbfe",
+                                borderRadius: "12px",
+                                textAlign: "center",
+                              }}
+                            >
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                              >
+                                Meilleure moyenne
+                              </Typography>
+                              <Typography
+                                variant="h5"
+                                fontWeight={800}
+                                color="#3b82f6"
+                              >
+                                {maxAvg}
+                              </Typography>
+                            </Card>
+                          </Grid>
+                          <Grid item xs={6} md={3}>
+                            <Card
+                              sx={{
+                                p: 2,
+                                bgcolor: "#fef2f2",
+                                border: "1px solid #fecaca",
+                                borderRadius: "12px",
+                                textAlign: "center",
+                              }}
+                            >
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                              >
+                                Plus basse moyenne
+                              </Typography>
+                              <Typography
+                                variant="h5"
+                                fontWeight={800}
+                                color="#ef4444"
+                              >
+                                {minAvg}
+                              </Typography>
+                            </Card>
+                          </Grid>
+                          <Grid item xs={6} md={3}>
+                            <Card
+                              sx={{
+                                p: 2,
+                                bgcolor: "#faf5ff",
+                                border: "1px solid #e9d5ff",
+                                borderRadius: "12px",
+                                textAlign: "center",
+                              }}
+                            >
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                              >
+                                Taux de réussite
+                              </Typography>
+                              <Typography
+                                variant="h5"
+                                fontWeight={800}
+                                color="#8b5cf6"
+                              >
+                                {successRate}%
+                              </Typography>
+                            </Card>
+                          </Grid>
+                        </Grid>
+                      );
+                    })()}
+                  </Card>
+                )
+              ) : (
+                <Box sx={{ py: 8, textAlign: "center", color: "#94a3b8" }}>
+                  <SummarizeIcon sx={{ fontSize: 64, opacity: 0.2, mb: 2 }} />
+                  <Typography variant="h6">
+                    Sélectionnez une classe pour afficher le récapitulatif des
+                    notes.
+                  </Typography>
+                </Box>
+              )}
+            </Box>
+          );
+        })()}
+
+      {openModal && (
+        <GradeFormModal
+          open={openModal}
+          onClose={() => setOpenModal(false)}
+          onSave={handleSave}
+          form={form}
+          setForm={setForm}
+          formErrors={formErrors}
+          submitting={submitting}
+          students={students}
+          modules={modulesList}
+        />
+      )}
+
+      <Dialog open={openDelete} onClose={() => setOpenDelete(false)}>
+        <DialogTitle>Confirmer la suppression</DialogTitle>
+        <DialogContent>Supprimer cette note définitivement ?</DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDelete(false)}>Annuler</Button>
+          <Button variant="contained" color="error" onClick={handleDelete}>
+            Supprimer
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar
+        open={toast.open}
+        autoHideDuration={4000}
+        onClose={() => setToast({ ...toast, open: false })}
+      >
+        <Alert severity={toast.severity}>{toast.message}</Alert>
+      </Snackbar>
+
+      <style>{`
+        @media print {
+          body * { visibility: hidden; }
+          .no-print { display: none !important; }
+          #printable-transcript, #printable-transcript * { visibility: visible; }
+          #printable-transcript { position: absolute; left: 0; top: 0; width: 100%; border: none !important; box-shadow: none !important; }
+          #printable-class-recap, #printable-class-recap * { visibility: visible; }
+          #printable-class-recap { position: absolute; left: 0; top: 0; width: 100%; border: none !important; box-shadow: none !important; }
+          .MuiCard-root { border: none !important; box-shadow: none !important; }
+        }
+      `}</style>
+    </Box>
+  );
+}
