@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://apismart.ifpt.dev/';
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://istc.tenteeglobal.com/';
 
 export function getMediaUrl(path) {
   if (!path) return null;
