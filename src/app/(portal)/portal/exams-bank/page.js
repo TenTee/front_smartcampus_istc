@@ -19,7 +19,7 @@ export default function ExamsBankStudentPage() {
     let mounted = true;
     (async () => {
       try {
-        const res = await epreuvesService.list({ est_partage: true });
+        const res = await epreuvesService.list({ student_view: true });
         if (!mounted) return;
         setItems(toList(res));
       } catch (e) {

@@ -36,6 +36,7 @@ import DownloadIcon from '@mui/icons-material/Download';
 import { formateurPortalService, filieresV2Service, levelsV2Service, semestresService } from '../../../../services/api/services';
 
 const TYPE_CHOICES = ['DEVOIR', 'EXAMEN', 'RATTRAPAGE', 'TP', 'AUTRE'];
+const TYPES_A_VALIDER = new Set(['EXAMEN', 'RATTRAPAGE', 'TP']);
 
 export default function EpreuvesPage() {
   const [epreuves, setEpreuves] = useState([]);
@@ -84,7 +85,7 @@ export default function EpreuvesPage() {
     fd.append('nom', formData.nom);
     fd.append('module_id', formData.module_id);
     fd.append('type_epreuve', formData.type_epreuve);
-    fd.append('est_partage', formData.est_partage);
+    fd.append('est_partage', TYPES_A_VALIDER.has(formData.type_epreuve) ? 'false' : formData.est_partage);
     fd.append('fichier', formData.fichier);
     if (formData.filiere_id) fd.append('filiere_id', formData.filiere_id);
     if (formData.niveau_id) fd.append('niveau_id', formData.niveau_id);
@@ -104,6 +105,10 @@ export default function EpreuvesPage() {
   };
 
   const handleTogglePartage = async (ep) => {
+    if (TYPES_A_VALIDER.has(ep.type_epreuve)) {
+      setSnackbar({ open: true, message: "Seule l'administration peut partager cette épreuve avec les étudiants.", severity: 'info' });
+      return;
+    }
     try {
       const result = await formateurPortalService.togglePartageEpreuve(ep.id);
       setEpreuves(prev => prev.map(e => e.id === ep.id ? { ...e, est_partage: result.est_partage } : e));
@@ -158,9 +163,13 @@ export default function EpreuvesPage() {
                       />
                     </TableCell>
                     <TableCell align="center">
-                      <IconButton size="small" onClick={() => handleTogglePartage(ep)} title={ep.est_partage ? 'Retirer le partage' : 'Partager aux étudiants'}>
-                        {ep.est_partage ? <BlockIcon /> : <ShareIcon />}
-                      </IconButton>
+                      {TYPES_A_VALIDER.has(ep.type_epreuve) ? (
+                        <Chip label="Validation administrative" size="small" color="warning" variant="outlined" />
+                      ) : (
+                        <IconButton size="small" onClick={() => handleTogglePartage(ep)} title={ep.est_partage ? 'Retirer le partage' : 'Partager aux étudiants'}>
+                          {ep.est_partage ? <BlockIcon /> : <ShareIcon />}
+                        </IconButton>
+                      )}
                       {ep.fichier && (
                         <IconButton size="small" component="a" href={ep.fichier} target="_blank" title="Télécharger sujet">
                           <DownloadIcon />
@@ -199,7 +208,7 @@ export default function EpreuvesPage() {
           </FormControl>
           <FormControl fullWidth>
             <InputLabel>Type</InputLabel>
-            <Select value={formData.type_epreuve} label="Type" onChange={(e) => setFormData(f => ({ ...f, type_epreuve: e.target.value }))}>
+            <Select value={formData.type_epreuve} label="Type" onChange={(e) => setFormData(f => ({ ...f, type_epreuve: e.target.value, est_partage: TYPES_A_VALIDER.has(e.target.value) ? false : f.est_partage }))}>
               {TYPE_CHOICES.map(t => <MenuItem key={t} value={t}>{t}</MenuItem>)}
             </Select>
           </FormControl>
@@ -232,10 +241,14 @@ export default function EpreuvesPage() {
             {formData.corrige ? `Corrigé: ${formData.corrige.name}` : 'Choisir le corrigé (optionnel)'}
             <input type="file" hidden onChange={(e) => setFormData(f => ({ ...f, corrige: e.target.files[0] }))} />
           </Button>
-          <FormControlLabel
-            control={<Switch checked={formData.est_partage} onChange={(e) => setFormData(f => ({ ...f, est_partage: e.target.checked }))} />}
-            label="Partager immédiatement aux étudiants"
-          />
+          {TYPES_A_VALIDER.has(formData.type_epreuve) ? (
+            <Alert severity="info">Cette épreuve restera privée. Seule l'administration peut la publier pour les étudiants.</Alert>
+          ) : (
+            <FormControlLabel
+              control={<Switch checked={formData.est_partage} onChange={(e) => setFormData(f => ({ ...f, est_partage: e.target.checked }))} />}
+              label="Partager immédiatement aux étudiants"
+            />
+          )}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDialog(false)}>Annuler</Button>

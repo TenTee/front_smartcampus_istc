@@ -43,8 +43,8 @@ export default function StudentGrades() {
 
   const getStatusColor = (note) => {
     if (note === null || note === undefined) return 'default';
-    if (note < 10) return 'error';
-    if (note < 12) return 'warning';
+    if (note < 50) return 'error';
+    if (note < 60) return 'warning';
     return 'success';
   };
 
@@ -97,18 +97,20 @@ export default function StudentGrades() {
                     {note.note_finale ?? '-'}
                   </TableCell>
                   <TableCell align="center">
-                    <Chip 
-                      label={note.note_finale >= 10 ? 'Validé' : note.note_finale !== null ? 'À rattraper' : 'En attente'} 
-                      color={getStatusColor(note.note_finale)}
-                      size="small"
-                    />
+                    {(() => {
+                      const statusVal = note.note_finale;
+                      const label = statusVal == null ? 'En attente' : (statusVal >= 50 ? 'Validé' : 'À rattraper');
+                      const color = getStatusColor(statusVal);
+                      return <Chip label={label} color={color} size="small" />;
+                    })()}
                   </TableCell>
                 </TableRow>
               ))
             ) : (
               <TableRow>
                 <TableCell colSpan={6} align="center" sx={{ py: 3 }}>
-                  Aucune note disponible pour cette session.
+                  Aucune note publiée pour cette session. Vos résultats
+                  apparaîtront ici après validation par l'administration.
                 </TableCell>
               </TableRow>
             )}

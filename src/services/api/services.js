@@ -78,6 +78,8 @@ export const notesService = {
   byFiliereNiveau: (params) => apiRequest({ url: `${API_ENDPOINTS.notes}par-filiere-niveau/`, method: 'GET', params }),
   batchEntry: (params) => apiRequest({ url: `${API_ENDPOINTS.notes}saisie-groupee/`, method: 'GET', params }),
   batchSave: (payload) => apiRequest({ url: `${API_ENDPOINTS.notes}batch-save/`, method: 'POST', data: payload }),
+  valider: (payload) => apiRequest({ url: `${API_ENDPOINTS.notes}valider/`, method: 'POST', data: payload }),
+  devalider: (payload) => apiRequest({ url: `${API_ENDPOINTS.notes}devalider/`, method: 'POST', data: payload }),
   releveNotes: (etudiantId, params) => apiRequest({ url: idPath(API_ENDPOINTS.notes, `${etudiantId}/releve-notes`), method: 'GET', params }),
 };
 export const paiesService = {
@@ -188,7 +190,10 @@ export const affectationsService = createCrudService(API_ENDPOINTS.affectations)
 export const emploisDuTempsV2Service = createCrudService(API_ENDPOINTS.emploisDuTempsV2);
 export const parametresGlobauxService = {
   ...createCrudService(API_ENDPOINTS.parametresGlobaux),
-  getStats: () => apiRequest({ url: API_ENDPOINTS.parametresGlobaux, method: 'GET' }),
+  getStats: async () => {
+    const response = await apiRequest({ url: API_ENDPOINTS.parametresGlobaux, method: 'GET' });
+    return Array.isArray(response) ? response[0] : response?.results?.[0] ?? response;
+  },
   updateStats: (data) => apiRequest({ url: `${API_ENDPOINTS.parametresGlobaux}1/`, method: 'PUT', data }),
 };
 

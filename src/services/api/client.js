@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://istc.tenteeglobal.com/';
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000/';
 
 export function getMediaUrl(path) {
   if (!path) return null;
@@ -167,6 +167,22 @@ export async function apiRequest(config) {
   if (typeof window === 'undefined') {
     return null;
   }
-  const response = await apiClient.request(config);
-  return response.data;
+  try {
+    const response = await apiClient.request(config);
+    return response.data;
+  } catch (error) {
+    try {
+      const base = (apiClient.defaults && apiClient.defaults.baseURL) || '';
+      const url = `${base}${config && config.url ? config.url : ''}`;
+      console.error('API request failed:', {
+        url,
+        method: config && config.method ? config.method : 'GET',
+        message: error?.message,
+        isAxiosError: error?.isAxiosError,
+      });
+    } catch (e) {
+      console.error('API request failed (error computing URL):', e);
+    }
+    throw error;
+  }
 }

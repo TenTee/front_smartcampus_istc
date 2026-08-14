@@ -22,7 +22,7 @@ import {
   Snackbar,
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
-import { formateurPortalService } from '../../../../services/api/services';
+import { formateurPortalService, parametresGlobauxService } from '../../../../services/api/services';
 
 export default function SaisieNotesPage() {
   const [classes, setClasses] = useState([]);
@@ -33,6 +33,18 @@ export default function SaisieNotesPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const [gradeParams, setGradeParams] = useState({ pourcentage_cc: 30, pourcentage_sn: 70 });
+
+  useEffect(() => {
+    parametresGlobauxService.getStats().then((res) => {
+      if (res) {
+        setGradeParams({
+          pourcentage_cc: res.pourcentage_cc ?? 30,
+          pourcentage_sn: res.pourcentage_sn ?? 70,
+        });
+      }
+    }).catch(console.error);
+  }, []);
 
   useEffect(() => {
     formateurPortalService.mesClasses()
@@ -72,7 +84,19 @@ export default function SaisieNotesPage() {
   }, [selectedClasse, selectedModule, classes]);
 
   const handleNoteChange = (idx, field, value) => {
-    const val = value === '' ? '' : Math.min(20, Math.max(0, parseFloat(value) || 0));
+    if (value === '') {
+      setNotes(prev => {
+        const copy = [...prev];
+        copy[idx] = { ...copy[idx], [field]: '' };
+        return copy;
+      });
+      return;
+    }
+    const maxVal = field === 'note_cc'
+      ? (gradeParams?.pourcentage_cc ?? 30)
+      : (gradeParams?.pourcentage_sn ?? 70);
+
+    const val = Math.min(maxVal, Math.max(0, parseFloat(value) || 0));
     setNotes(prev => {
       const copy = [...prev];
       copy[idx] = { ...copy[idx], [field]: val };
@@ -97,7 +121,7 @@ export default function SaisieNotesPage() {
       const result = await formateurPortalService.saisirNotes({ notes: notesToSave });
       setSnackbar({
         open: true,
-        message: `${result.created} créées, ${result.updated} mises à jour.${result.errors?.length ? ` Erreurs: ${result.errors.length}` : ''}`,
+        message: `${result.created} créées, ${result.updated} mises à jour.${result.errors?.length ? ` Erreurs: ${result.errors.length}` : ''} Les notes seront visibles par les étudiants après validation de l'administration.`,
         severity: result.errors?.length ? 'warning' : 'success',
       });
     } catch (e) {
@@ -161,9 +185,9 @@ export default function SaisieNotesPage() {
                 <TableRow>
                   <TableCell><strong>Matricule</strong></TableCell>
                   <TableCell><strong>Nom & Prénom</strong></TableCell>
-                  <TableCell align="center"><strong>CC (/20)</strong></TableCell>
-                  <TableCell align="center"><strong>Examen (/20)</strong></TableCell>
-                  <TableCell align="center"><strong>Rattrapage (/20)</strong></TableCell>
+                  <TableCell align="center"><strong>CC (/{gradeParams?.pourcentage_cc ?? 30})</strong></TableCell>
+                  <TableCell align="center"><strong>Examen (/{gradeParams?.pourcentage_sn ?? 70})</strong></TableCell>
+                  <TableCell align="center"><strong>Rattrapage (/{gradeParams?.pourcentage_sn ?? 70})</strong></TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -177,7 +201,7 @@ export default function SaisieNotesPage() {
                         size="small"
                         value={note.note_cc}
                         onChange={(e) => handleNoteChange(idx, 'note_cc', e.target.value)}
-                        inputProps={{ min: 0, max: 20, step: 0.25 }}
+                        inputProps={{ min: 0, max: gradeParams?.pourcentage_cc ?? 30, step: 0.25 }}
                         sx={{ width: 80 }}
                       />
                     </TableCell>
@@ -187,7 +211,7 @@ export default function SaisieNotesPage() {
                         size="small"
                         value={note.note_sn}
                         onChange={(e) => handleNoteChange(idx, 'note_sn', e.target.value)}
-                        inputProps={{ min: 0, max: 20, step: 0.25 }}
+                        inputProps={{ min: 0, max: gradeParams?.pourcentage_sn ?? 70, step: 0.25 }}
                         sx={{ width: 80 }}
                       />
                     </TableCell>
@@ -197,7 +221,7 @@ export default function SaisieNotesPage() {
                         size="small"
                         value={note.note_rattrapage}
                         onChange={(e) => handleNoteChange(idx, 'note_rattrapage', e.target.value)}
-                        inputProps={{ min: 0, max: 20, step: 0.25 }}
+                        inputProps={{ min: 0, max: gradeParams?.pourcentage_sn ?? 70, step: 0.25 }}
                         sx={{ width: 80 }}
                       />
                     </TableCell>

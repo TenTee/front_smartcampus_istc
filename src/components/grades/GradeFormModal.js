@@ -1,4 +1,5 @@
 import React from 'react';
+import { parametresGlobauxService } from '../../services/api/services';
 import {
   Dialog,
   DialogTitle,
@@ -53,6 +54,21 @@ export default function GradeFormModal({
 
 
 
+  const [ccMax, setCcMax] = React.useState(30);
+  const [snMax, setSnMax] = React.useState(70);
+
+  React.useEffect(() => {
+    let mounted = true;
+    parametresGlobauxService.getStats().then((res) => {
+      if (!res) return;
+      if (mounted) {
+        setCcMax(res.pourcentage_cc ?? 30);
+        setSnMax(res.pourcentage_sn ?? 70);
+      }
+    }).catch(() => {});
+    return () => { mounted = false; };
+  }, []);
+
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
       <DialogTitle>{form.id ? 'Modifier les notes' : 'Ajouter des notes'}</DialogTitle>
@@ -61,7 +77,7 @@ export default function GradeFormModal({
 
           <Grid item xs={12}>
   <Alert severity="info">
-    Toutes les notes sont saisies sur 20.
+    Saisir la note CC sur {ccMax} et la note SN sur {snMax} — la note finale sera calculée sur 100.
   </Alert>
 </Grid>
 
@@ -109,10 +125,10 @@ export default function GradeFormModal({
   fullWidth
   size="small"
   type="number"
-  label="Note CC (/20)"
-  placeholder="Ex: 15.5"
-  inputProps={{ min: 0, max: 20, step: 0.25 }}
-  helperText={formErrors.note_cc || 'Note sur 20'}
+  label={`Note CC (/${ccMax})`}
+  placeholder={`Ex: ${Math.max(0, (ccMax/2).toFixed(2))}`}
+  inputProps={{ min: 0, max: ccMax, step: 0.25 }}
+  helperText={formErrors.note_cc || `Note sur ${ccMax}`}
   value={form.note_cc !== undefined && form.note_cc !== null && !Number.isNaN(form.note_cc) ? form.note_cc : ''}
   onChange={(e) => {
     let valStr = e.target.value;
@@ -122,7 +138,7 @@ export default function GradeFormModal({
     }
     let value = parseFloat(valStr);
     if (!isNaN(value)) {
-      if (value > 20) value = 20;
+      if (value > ccMax) value = ccMax;
       if (value < 0) value = 0;
       setForm({ ...form, note_cc: value });
     }
@@ -135,10 +151,10 @@ export default function GradeFormModal({
   fullWidth
   size="small"
   type="number"
-  label="Note SN (/20)"
-  placeholder="Ex: 12.75"
-  inputProps={{ min: 0, max: 20, step: 0.25 }}
-  helperText={formErrors.note_sn || 'Note sur 20'}
+  label={`Note SN (/${snMax})`}
+  placeholder={`Ex: ${Math.max(0, (snMax/2).toFixed(2))}`}
+  inputProps={{ min: 0, max: snMax, step: 0.25 }}
+  helperText={formErrors.note_sn || `Note sur ${snMax}`}
   value={form.note_sn !== undefined && form.note_sn !== null && !Number.isNaN(form.note_sn) ? form.note_sn : ''}
   onChange={(e) => {
     let valStr = e.target.value;
@@ -148,7 +164,7 @@ export default function GradeFormModal({
     }
     let value = parseFloat(valStr);
     if (!isNaN(value)) {
-      if (value > 20) value = 20;
+      if (value > snMax) value = snMax;
       if (value < 0) value = 0;
       setForm({ ...form, note_sn: value });
     }

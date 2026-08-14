@@ -159,18 +159,20 @@ export default function ParametresGlobaux() {
               <TextField
                 fullWidth label="Pourcentage CC (%)" type="number" margin="normal"
                 value={parametres.pourcentage_cc}
-                onChange={(e) => setParametres({ ...parametres, pourcentage_cc: parseInt(e.target.value) })}
+                inputProps={{ min: 0, max: 100 }}
+                onChange={(e) => setParametres({ ...parametres, pourcentage_cc: Number(e.target.value) })}
               />
               <TextField
                 fullWidth label="Pourcentage SN (%)" type="number" margin="normal"
                 value={parametres.pourcentage_sn}
-                onChange={(e) => setParametres({ ...parametres, pourcentage_sn: parseInt(e.target.value) })}
+                inputProps={{ min: 0, max: 100 }}
+                onChange={(e) => setParametres({ ...parametres, pourcentage_sn: Number(e.target.value) })}
               />
               <Button fullWidth variant="contained" sx={{ mt: 2 }} onClick={handleUpdateParams}>
                 Mettre à jour les coefficients
               </Button>
               <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-                La somme de CC et SN doit être égale à 100%.
+                Les notes sont saisies sur ces quotas (ex. CC /30 et SN /70), puis additionnées pour obtenir la note finale /100. La somme doit être égale à 100%.
               </Typography>
             </Box>
           </Paper>

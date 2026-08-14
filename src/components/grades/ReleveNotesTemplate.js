@@ -9,8 +9,8 @@ const ReleveNotesTemplate = forwardRef(function ReleveNotesTemplate({ data }, re
   const { etablissement, etudiant, parametres, semestres, resume } = data;
   const primary = etablissement?.couleur_primaire || "#193A7F";
   const secondary = etablissement?.couleur_secondaire || "#2A52A1";
-  const pcc = parametres?.pourcentage_cc || 30;
-  const psn = parametres?.pourcentage_sn || 70;
+  const pcc = parametres?.pourcentage_cc ?? 30;
+  const psn = parametres?.pourcentage_sn ?? 70;
 
   return (
     <Box
@@ -167,7 +167,7 @@ const ReleveNotesTemplate = forwardRef(function ReleveNotesTemplate({ data }, re
                 {semestre.session}
               </Typography>
               <Typography sx={{ fontSize: "9px", color: "rgba(255,255,255,0.9)" }}>
-                Moyenne: {semestre.moyenne != null ? `${semestre.moyenne} / 20` : "-"} | Crédits validés: {semestre.credits_valides}/{semestre.total_credits}
+                Moyenne: {semestre.moyenne != null ? `${semestre.moyenne} / 100` : "-"} | Crédits validés: {semestre.credits_valides}/{semestre.total_credits}
               </Typography>
             </Box>
 
@@ -183,7 +183,7 @@ const ReleveNotesTemplate = forwardRef(function ReleveNotesTemplate({ data }, re
                   <th style={thStyle(primary)} rowSpan={2}>CODE UE</th>
                   <th style={thStyle(primary)} rowSpan={2}>INTITULÉ DES UNITÉS D&apos;ENSEIGNEMENT</th>
                   <th style={thStyle(primary)} rowSpan={2}>CRÉDITS</th>
-                  <th style={thStyle(primary)} colSpan={3}>NOTES / 20</th>
+                  <th style={thStyle(primary)} colSpan={3}>DÉTAIL DES NOTES</th>
                   <th style={thStyle(primary)} rowSpan={2}>GRADE</th>
                   <th style={thStyle(primary)} rowSpan={2}>OBSERVATIONS</th>
                 </tr>
@@ -243,7 +243,7 @@ const ReleveNotesTemplate = forwardRef(function ReleveNotesTemplate({ data }, re
         <SummaryCard
           icon="📊"
           label="MOYENNE ANNUELLE"
-          value={resume?.moyenne_annuelle != null ? `${resume.moyenne_annuelle} / 20` : "- / 20"}
+          value={resume?.moyenne_annuelle != null ? `${resume.moyenne_annuelle} / 100` : "- / 100"}
           color={primary}
         />
         <SummaryCard

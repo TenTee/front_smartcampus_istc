@@ -33,6 +33,7 @@ import {
   Divider,
   Grid,
   Tooltip,
+  Chip,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import SearchIcon from "@mui/icons-material/Search";
@@ -46,6 +47,8 @@ import GridOnIcon from "@mui/icons-material/GridOn";
 import SaveIcon from "@mui/icons-material/Save";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import SummarizeIcon from "@mui/icons-material/Summarize";
+import VerifiedIcon from "@mui/icons-material/Verified";
+import VerifiedUserIcon from "@mui/icons-material/VerifiedUser";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import * as XLSX from "xlsx";
@@ -130,6 +133,7 @@ export default function GradesPage() {
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [validating, setValidating] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
   const [page, setPage] = useState(0);
@@ -225,13 +229,10 @@ export default function GradesPage() {
       );
       setConfig(resConfig);
       if (resParams) {
-        const paramsList = Array.isArray(resParams) ? resParams : resParams?.results || [];
-        if (paramsList.length > 0) {
-          setGradeParams({
-            pourcentage_cc: paramsList[0].pourcentage_cc || 30,
-            pourcentage_sn: paramsList[0].pourcentage_sn || 70,
-          });
-        }
+        setGradeParams({
+          pourcentage_cc: resParams.pourcentage_cc ?? 30,
+          pourcentage_sn: resParams.pourcentage_sn ?? 70,
+        });
       }
     } catch (error) {
       setToast({
@@ -367,6 +368,7 @@ export default function GradesPage() {
           ...item,
           note_cc: item.note_cc || "",
           note_sn: item.note_sn || "",
+          validee: !!item.validee,
         })),
       );
     } catch (error) {
@@ -396,7 +398,8 @@ export default function GradesPage() {
       await notesService.batchSave(payload);
       setToast({
         open: true,
-        message: "Toutes les notes ont été enregistrées",
+        message:
+          "Toutes les notes ont été enregistrées. Elles seront visibles par les étudiants après validation.",
         severity: "success",
       });
       fetchData(); // Refresh global list
@@ -414,6 +417,47 @@ export default function GradesPage() {
       });
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleBatchValidate = async (valider = true) => {
+    const noteIds = batchData
+      .filter((item) => item.note_id)
+      .map((item) => item.note_id);
+    if (noteIds.length === 0) {
+      setToast({
+        open: true,
+        message:
+          "Aucune note enregistrée à valider. Enregistrez d'abord les notes.",
+        severity: "warning",
+      });
+      return;
+    }
+    setValidating(true);
+    try {
+      const payload = { note_ids: noteIds };
+      const res = valider
+        ? await notesService.valider(payload)
+        : await notesService.devalider(payload);
+      setToast({
+        open: true,
+        message: res?.message || (valider ? "Notes validées" : "Notes dévalidées"),
+        severity: "success",
+      });
+      fetchData();
+      try {
+        await fetchBatchData();
+      } catch (e) {
+        // ignore
+      }
+    } catch (error) {
+      setToast({
+        open: true,
+        message: getApiErrorMessage(error, valider ? "Erreur lors de la validation" : "Erreur lors de la dévalidation"),
+        severity: "error",
+      });
+    } finally {
+      setValidating(false);
     }
   };
 
@@ -475,33 +519,50 @@ export default function GradesPage() {
     }
   };
 
+
   const computeNoteFinale = (noteCC, noteSN) => {
-    const cc = parseFloat(noteCC);
-    if (isNaN(cc)) return null;
-    const sn = parseFloat(noteSN) || 0;
-    const total = (cc * gradeParams.pourcentage_cc) + (sn * gradeParams.pourcentage_sn);
-    return (total / 100).toFixed(2);
+  const cc = parseFloat(noteCC) || 0;
+  const sn = parseFloat(noteSN) || 0;
+
+  return (cc + sn).toFixed(2);
+
   };
 
-  const handleBatchInputChange = (index, field, value) => {
-    const newData = [...batchData];
-    if ((field === "note_cc" || field === "note_sn") && value !== "") {
-      let num = parseFloat(value);
-      if (!isNaN(num)) {
-        if (num > 20) num = 20;
-        if (num < 0) num = 0;
-        value = num;
+const handleBatchInputChange = (index, field, value) => {
+  const newData = [...batchData];
+  const ccMax = gradeParams?.pourcentage_cc ?? 30;
+  const snMax = gradeParams?.pourcentage_sn ?? 70;
+
+  if ((field === "note_cc" || field === "note_sn") && value !== "") {
+    let num = parseFloat(value);
+
+    if (!isNaN(num)) {
+      // CC est sur la valeur configuree
+      if (field === "note_cc") {
+        if (num > ccMax) num = ccMax;
       }
-    }
-    newData[index][field] = value;
-    // Recalculate note_finale locally
-    newData[index].note_finale = computeNoteFinale(
-      field === "note_cc" ? value : newData[index].note_cc,
-      field === "note_sn" ? value : newData[index].note_sn,
-    );
-    setBatchData(newData);
-  };
 
+      // SN est sur la valeur configuree
+      if (field === "note_sn") {
+        if (num > snMax) num = snMax;
+      }
+
+      if (num < 0) num = 0;
+
+      value = num;
+    }
+  }
+
+  newData[index][field] = value;
+
+  const cc = parseFloat(newData[index].note_cc) || 0;
+  const sn = parseFloat(newData[index].note_sn) || 0;
+
+  // Note finale sur 100
+  newData[index].note_finale = (cc + sn).toFixed(2);
+
+  setBatchData(newData);
+};
   const handleSave = async () => {
     if (!validateForm()) return;
     setSubmitting(true);
@@ -827,6 +888,28 @@ export default function GradesPage() {
                   >
                     {submitting ? "Enregistrement..." : "Enregistrer tout"}
                   </Button>
+                  <Button
+                    variant="contained"
+                    startIcon={<VerifiedIcon />}
+                    onClick={() => handleBatchValidate(true)}
+                    disabled={validating || !batchData.length}
+                    sx={{ ...premiumStyles.actionBtn, bgcolor: "#16a34a" }}
+                  >
+                    {validating ? "Validation..." : "Valider les notes"}
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    startIcon={<VerifiedUserIcon />}
+                    onClick={() => handleBatchValidate(false)}
+                    disabled={validating || !batchData.length}
+                    sx={{
+                      ...premiumStyles.actionBtn,
+                      color: "#f59e0b",
+                      borderColor: "#fcd34d",
+                    }}
+                  >
+                    Dévalider
+                  </Button>
                 </Box>
               </Box>
 
@@ -906,6 +989,16 @@ export default function GradesPage() {
                 )}
               </Box>
 
+              <Alert
+                severity="info"
+                sx={{ mb: 2, borderRadius: "8px" }}
+                icon={<VerifiedIcon fontSize="small" />}
+              >
+                Les notes enregistrées sont masquées aux étudiants jusqu'à leur
+                validation. Cliquez sur &quot;Valider les notes&quot; pour les
+                publier sur le portail étudiant.
+              </Alert>
+
               <TableContainer>
                 <Table>
                   <TableHead>
@@ -917,13 +1010,16 @@ export default function GradesPage() {
                         Nom Complet
                       </TableCell>
                       <TableCell sx={premiumStyles.tableHeadCell} width={150}>
-                        Note CC / 20
+                        Note CC / {gradeParams?.pourcentage_cc ?? 30}
                       </TableCell>
                       <TableCell sx={premiumStyles.tableHeadCell} width={150}>
-                        Note SN / 20
+                        Note SN / {gradeParams?.pourcentage_sn ?? 70}
                       </TableCell>
                       <TableCell sx={premiumStyles.tableHeadCell}>
-                        Note Finale
+                        Note Finale 
+                      </TableCell>
+                      <TableCell sx={premiumStyles.tableHeadCell}>
+                        Statut
                       </TableCell>
                     </TableRow>
                   </TableHead>
@@ -950,7 +1046,7 @@ export default function GradesPage() {
                                 e.target.value,
                               )
                             }
-                            inputProps={{ min: 0, max: 20, step: 0.25 }}
+                            inputProps={{ min: 0, max: gradeParams?.pourcentage_cc ?? 30, step: 0.25 }}
                             sx={premiumStyles.input}
                           />
                         </TableCell>
@@ -966,7 +1062,7 @@ export default function GradesPage() {
                                 e.target.value,
                               )
                             }
-                            inputProps={{ min: 0, max: 20, step: 0.25 }}
+                            inputProps={{ min: 0, max: gradeParams?.pourcentage_sn ?? 70, step: 0.25 }}
                             sx={premiumStyles.input}
                           />
                         </TableCell>
@@ -977,7 +1073,15 @@ export default function GradesPage() {
                             color: "#10b981",
                           }}
                         >
-                          {row.note_finale || "-"}
+                          {row.note_finale || "__"} / 100
+                        </TableCell>
+                        <TableCell sx={premiumStyles.tableCell}>
+                          <Chip
+                            size="small"
+                            label={row.validee ? "Validée" : "En attente"}
+                            color={row.validee ? "success" : "warning"}
+                            variant={row.validee ? "filled" : "outlined"}
+                          />
                         </TableCell>
                       </TableRow>
                     ))}
@@ -1240,20 +1344,20 @@ export default function GradesPage() {
           const getMention = (avg) => {
             if (avg === null) return "--";
             const v = parseFloat(avg);
-            if (v < 10) return "Échec";
-            if (v < 12) return "Passable";
-            if (v < 14) return "Assez Bien";
-            if (v < 16) return "Bien";
+            if (v < 50) return "Échec";
+            if (v < 60) return "Passable";
+            if (v < 70) return "Assez Bien";
+            if (v < 80) return "Bien";
             return "Très Bien";
           };
 
           const getMentionColor = (avg) => {
             if (avg === null) return "#94a3b8";
             const v = parseFloat(avg);
-            if (v < 10) return "#ef4444";
-            if (v < 12) return "#f59e0b";
-            if (v < 14) return "#3b82f6";
-            if (v < 16) return "#10b981";
+            if (v < 50) return "#ef4444";
+            if (v < 60) return "#f59e0b";
+            if (v < 70) return "#3b82f6";
+            if (v < 80) return "#10b981";
             return "#8b5cf6";
           };
 
@@ -1597,7 +1701,7 @@ export default function GradesPage() {
                                 key={student.id}
                                 hover
                                 sx={
-                                  avg !== null && parseFloat(avg) < 10
+                                  avg !== null && parseFloat(avg) < 50
                                     ? { bgcolor: "#fef2f2" }
                                     : {}
                                 }
@@ -1649,7 +1753,7 @@ export default function GradesPage() {
                                         textAlign: "center",
                                         fontWeight: 500,
                                         color:
-                                          nf != null && parseFloat(nf) < 10
+                                          nf != null && parseFloat(nf) < 50
                                             ? "#ef4444"
                                             : "#334155",
                                       }}
@@ -1711,7 +1815,7 @@ export default function GradesPage() {
                       ).toFixed(2);
                       const maxAvg = Math.max(...avgs).toFixed(2);
                       const minAvg = Math.min(...avgs).toFixed(2);
-                      const successCount = avgs.filter((a) => a >= 10).length;
+                      const successCount = avgs.filter((a) => a >= 50).length;
                       const successRate = (
                         (successCount / avgs.length) *
                         100
