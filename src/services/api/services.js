@@ -80,6 +80,7 @@ export const notesService = {
   batchSave: (payload) => apiRequest({ url: `${API_ENDPOINTS.notes}batch-save/`, method: 'POST', data: payload }),
   valider: (payload) => apiRequest({ url: `${API_ENDPOINTS.notes}valider/`, method: 'POST', data: payload }),
   devalider: (payload) => apiRequest({ url: `${API_ENDPOINTS.notes}devalider/`, method: 'POST', data: payload }),
+  rattrapages: (params) => apiRequest({ url: `${API_ENDPOINTS.notes}rattrapages/`, method: 'GET', params }),
   releveNotes: (etudiantId, params) => apiRequest({ url: idPath(API_ENDPOINTS.notes, `${etudiantId}/releve-notes`), method: 'GET', params }),
 };
 export const paiesService = {

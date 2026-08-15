@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useMemo, useRef } from "react";
+import React, { useCallback, useEffect, useState, useMemo, useRef } from "react";
 import {
   Box,
   Typography,
@@ -164,6 +164,10 @@ export default function GradesPage() {
   });
   const [batchData, setBatchData] = useState([]);
   const [batchLoading, setBatchLoading] = useState(false);
+  const [rattrapageClasse, setRattrapageClasse] = useState("");
+  const [rattrapageSession, setRattrapageSession] = useState("");
+  const [rattrapages, setRattrapages] = useState([]);
+  const [rattrapageLoading, setRattrapageLoading] = useState(false);
 
   const initialForm = {
     etudiant: "",
@@ -248,6 +252,72 @@ export default function GradesPage() {
   useEffect(() => {
     fetchData();
   }, [selectedYear?.id]);
+
+  const fetchRattrapages = useCallback(async () => {
+    setRattrapageLoading(true);
+    try {
+      const data = await notesService.rattrapages({
+        ...(rattrapageClasse ? { classe: rattrapageClasse } : {}),
+        ...(rattrapageSession ? { session: rattrapageSession } : {}),
+      });
+      setRattrapages(Array.isArray(data) ? data : data?.results || []);
+    } catch (error) {
+      setToast({
+        open: true,
+        message: getApiErrorMessage(error, "Impossible de charger les rattrapages."),
+        severity: "error",
+      });
+    } finally {
+      setRattrapageLoading(false);
+    }
+  }, [rattrapageClasse, rattrapageSession]);
+
+  useEffect(() => {
+    if (tabValue === 3) fetchRattrapages();
+  }, [tabValue, fetchRattrapages, selectedYear?.id]);
+
+  const handleDownloadRattrapagesPdf = () => {
+    if (!rattrapages.length) return;
+    const pdf = new jsPDF("p", "mm", "a4");
+    const selectedClasse = classesList.find((item) => String(item.id) === String(rattrapageClasse));
+    const title = "Liste des étudiants à convoquer au rattrapage";
+    pdf.setFontSize(15);
+    pdf.text(title, 14, 16);
+    pdf.setFontSize(10);
+    pdf.text(`Classe : ${selectedClasse?.nom || "Toutes les classes"}`, 14, 23);
+    pdf.text(`Semestre : ${rattrapageSession || "Tous les semestres"}`, 14, 29);
+    pdf.text("Critère : note finale strictement inférieure à 50 / 100", 14, 35);
+
+    let y = 44;
+    const writeHeader = () => {
+      pdf.setFontSize(8);
+      pdf.setFont(undefined, "bold");
+      pdf.text("N°", 14, y);
+      pdf.text("Étudiant", 24, y);
+      pdf.text("Matricule", 78, y);
+      pdf.text("Salle", 112, y);
+      pdf.text("Module à rattraper", 148, y);
+      pdf.text("Note /100", 190, y);
+      pdf.setFont(undefined, "normal");
+      y += 6;
+    };
+    writeHeader();
+    rattrapages.forEach((row, index) => {
+      if (y > 280) {
+        pdf.addPage();
+        y = 16;
+        writeHeader();
+      }
+      pdf.text(String(index + 1), 14, y);
+      pdf.text(String(row.etudiant_nom || "-").slice(0, 28), 24, y);
+      pdf.text(String(row.etudiant_matricule || "-").slice(0, 17), 78, y);
+      pdf.text(String(row.salle_nom || "Non planifiée").slice(0, 19), 112, y);
+      pdf.text(String(row.module_nom || "-").slice(0, 23), 148, y);
+      pdf.text(Number(row.note_finale).toFixed(2), 190, y);
+      y += 6;
+    });
+    pdf.save(`rattrapages_${selectedClasse?.nom?.replace(/\s+/g, "_") || "toutes_classes"}.pdf`);
+  };
 
   const filteredNotes = useMemo(() => {
     return notes.filter((n) => {
@@ -773,6 +843,12 @@ const handleBatchInputChange = (index, field, value) => {
             label="Récapitulatif par Classe"
             sx={{ textTransform: "none", fontWeight: 600 }}
           />
+          <Tab
+            icon={<AssignmentIcon />}
+            iconPosition="start"
+            label="Rattrapages"
+            sx={{ textTransform: "none", fontWeight: 600 }}
+          />
         </Tabs>
       </Box>
 
@@ -994,7 +1070,7 @@ const handleBatchInputChange = (index, field, value) => {
                 sx={{ mb: 2, borderRadius: "8px" }}
                 icon={<VerifiedIcon fontSize="small" />}
               >
-                Les notes enregistrées sont masquées aux étudiants jusqu'à leur
+                Les notes enregistrées sont masquées aux étudiants jusqu&apos;à leur
                 validation. Cliquez sur &quot;Valider les notes&quot; pour les
                 publier sur le portail étudiant.
               </Alert>
@@ -1940,6 +2016,68 @@ const handleBatchInputChange = (index, field, value) => {
             </Box>
           );
         })()}
+
+      {tabValue === 3 && (
+        <Card sx={premiumStyles.card}>
+          <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2, mb: 3, flexWrap: "wrap" }}>
+            <Box>
+              <Typography variant="h6" fontWeight={700}>Étudiants en rattrapage</Typography>
+              <Typography variant="body2" color="text.secondary">
+                Toute note finale strictement inférieure à 50 / 100 requiert un rattrapage.
+              </Typography>
+            </Box>
+            <Button variant="contained" startIcon={<DownloadIcon />} onClick={handleDownloadRattrapagesPdf} disabled={!rattrapages.length} sx={{ ...premiumStyles.actionBtn, bgcolor: "#4f46e5" }}>
+              Télécharger le PDF
+            </Button>
+          </Box>
+          <Grid container spacing={2} sx={{ mb: 3 }}>
+            <Grid item xs={12} md={4}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Classe</InputLabel>
+                <Select value={rattrapageClasse} label="Classe" onChange={(e) => setRattrapageClasse(e.target.value)}>
+                  <MenuItem value=""><em>Toutes les classes</em></MenuItem>
+                  {classesList.map((classe) => <MenuItem key={classe.id} value={classe.id}>{classe.nom}</MenuItem>)}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Semestre</InputLabel>
+                <Select value={rattrapageSession} label="Semestre" onChange={(e) => setRattrapageSession(e.target.value)}>
+                  <MenuItem value=""><em>Tous les semestres</em></MenuItem>
+                  <MenuItem value="Semestre 1">Semestre 1</MenuItem>
+                  <MenuItem value="Semestre 2">Semestre 2</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+          </Grid>
+          {rattrapageLoading ? <TableSkeleton rows={5} columns={6} /> : (
+            <TableContainer component={Paper} variant="outlined">
+              <Table size="small">
+                <TableHead><TableRow>
+                  <TableCell sx={premiumStyles.tableHeadCell}>Étudiant</TableCell>
+                  <TableCell sx={premiumStyles.tableHeadCell}>Matricule</TableCell>
+                  <TableCell sx={premiumStyles.tableHeadCell}>Classe</TableCell>
+                  <TableCell sx={premiumStyles.tableHeadCell}>Salle</TableCell>
+                  <TableCell sx={premiumStyles.tableHeadCell}>Module à rattraper</TableCell>
+                  <TableCell sx={premiumStyles.tableHeadCell}>Note / 100</TableCell>
+                </TableRow></TableHead>
+                <TableBody>
+                  {rattrapages.map((row) => <TableRow key={row.note_id} hover>
+                    <TableCell sx={premiumStyles.tableCell}>{row.etudiant_nom}</TableCell>
+                    <TableCell sx={premiumStyles.tableCell}>{row.etudiant_matricule || "-"}</TableCell>
+                    <TableCell sx={premiumStyles.tableCell}>{row.classe_nom}</TableCell>
+                    <TableCell sx={premiumStyles.tableCell}>{row.salle_nom || "Non planifiée"}</TableCell>
+                    <TableCell sx={premiumStyles.tableCell}>{row.module_nom}</TableCell>
+                    <TableCell sx={{ ...premiumStyles.tableCell, color: "#dc2626", fontWeight: 700 }}>{Number(row.note_finale).toFixed(2)}</TableCell>
+                  </TableRow>)}
+                  {!rattrapages.length && <TableRow><TableCell colSpan={6} align="center" sx={{ py: 5, color: "text.secondary" }}>Aucun étudiant ne correspond aux filtres sélectionnés.</TableCell></TableRow>}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </Card>
+      )}
 
       {openModal && (
         <GradeFormModal
