@@ -721,6 +721,19 @@ const handleBatchInputChange = (index, field, value) => {
     const element = releveRef.current;
     if (!element) return;
     try {
+      // html2canvas doit attendre les fichiers locaux (notamment logoisare)
+      // afin de capturer exactement le même en-tête que celui de l'aperçu.
+      await Promise.all(
+        Array.from(element.querySelectorAll("img")).map((image) => {
+          if (image.complete) {
+            return image.decode ? image.decode().catch(() => undefined) : undefined;
+          }
+          return new Promise((resolve) => {
+            image.addEventListener("load", resolve, { once: true });
+            image.addEventListener("error", resolve, { once: true });
+          });
+        }),
+      );
       const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
@@ -728,21 +741,9 @@ const handleBatchInputChange = (index, field, value) => {
       });
       const imgData = canvas.toDataURL("image/png");
       const pdf = new jsPDF("p", "mm", "a4");
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-      let position = 0;
-      const pageHeight = pdf.internal.pageSize.getHeight();
-
-      if (pdfHeight <= pageHeight) {
-        pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
-      } else {
-        while (position < pdfHeight) {
-          pdf.addImage(imgData, "PNG", 0, -position, pdfWidth, pdfHeight);
-          position += pageHeight;
-          if (position < pdfHeight) pdf.addPage();
-        }
-      }
-
+      // Le gabarit du relevé est une page A4 fixe : on l'insère donc sans
+      // recalcul de ratio, qui pouvait agrandir le logo dans le PDF.
+      pdf.addImage(imgData, "PNG", 0, 0, 210, 297);
       const studentName = releveData?.etudiant?.nom?.replace(/\s+/g, "_") || "etudiant";
       pdf.save(`releve_notes_${studentName}.pdf`);
     } catch (err) {

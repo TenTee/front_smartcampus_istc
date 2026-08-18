@@ -69,6 +69,7 @@ import {
 } from "../../../services/api/services";
 import { getApiErrorMessage, getMediaUrl } from "../../../services/api/client";
 import { ConfigContext } from "../../../theme/ThemeRegistry";
+import CertificateScolariteTemplate from "../../../components/certificates/CertificateScolariteTemplate";
 import * as XLSX from "xlsx";
 
 function toList(data) {
@@ -2242,6 +2243,23 @@ export default function StudentsPage() {
         >
           {certStudent &&
             (() => {
+              if (certStudent) {
+                const studentInscription = certStudent.inscriptions?.[0] || {};
+                const studentFiliere = certStudent.filiere_details?.nom || certStudent.filiere?.nom || filieres.find((f) => f.id === (certStudent.filiere?.id || certStudent.filiere))?.nom || "—";
+                return <CertificateScolariteTemplate
+                  student={certStudent}
+                  inscription={studentInscription}
+                  school={{
+                    logo: logoUrl,
+                    telephone: schoolTel,
+                    email: schoolEmail,
+                    adresse: config?.adresse,
+                    ville: schoolVille,
+                    directeurNom,
+                    filiere: studentFiliere,
+                  }}
+                />;
+              }
               const inscription = certStudent.inscriptions?.[0];
               const filiereNom =
                 certStudent.filiere_details?.nom ||
@@ -2453,9 +2471,8 @@ export default function StudentsPage() {
             left: 0;
             top: 0;
             width: 210mm;
-            min-height: 297mm;
+            height: 297mm;
             margin: 0;
-            padding: 0;
             box-shadow: none !important;
             border: none !important;
           }

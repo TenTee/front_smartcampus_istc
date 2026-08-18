@@ -14,6 +14,8 @@ import {
 } from "@mui/material";
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
+import AccountCircleOutlined from "@mui/icons-material/AccountCircleOutlined";
+import LockOutlined from "@mui/icons-material/LockOutlined";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -142,12 +144,12 @@ export default function LoginPage() {
   };
 
   return (
-    <Box sx={{ display: "flex", minHeight: "100vh" }}>
-      {/* Left side - Image */}
+    <Box sx={{ display: "flex", minHeight: "100dvh", bgcolor: "#f5f7fb" }}>
+      {/* Visuel de présentation */}
       <Box
         sx={{
           flex: 1,
-          display: { xs: "none", md: "block" },
+          display: { xs: "none", lg: "block" },
           bgcolor: "#193A7F",
           backgroundImage: 'url("/logonstudent.jpg")',
           backgroundSize: "cover",
@@ -162,54 +164,82 @@ export default function LoginPage() {
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: "rgba(25, 58, 127, 0.7)", // Blue overlay
+            background:
+              "linear-gradient(180deg, rgba(10, 35, 91, 0.28) 10%, rgba(10, 35, 91, 0.9) 100%)",
           }}
         />
         <Box
           sx={{
             position: "absolute",
-            bottom: "20%",
-            left: "10%",
+            bottom: "12%",
+            left: { lg: "10%", xl: "14%" },
             color: "white",
-            maxWidth: "80%",
+            maxWidth: 510,
           }}
         >
-          <Typography variant="h3" fontWeight="bold" gutterBottom>
+          {/* <Typography
+            variant="overline"
+            sx={{ letterSpacing: 2.5, fontWeight: 700, opacity: 0.85 }}
+          >
+            INSTITUT SUPÉRIEUR DES TECHNOLOGIES
+          </Typography> */}
+          <Typography variant="h3" fontWeight={800} sx={{ mt: 1, mb: 2 }}>
             SMART CAMPUS
           </Typography>
-          <Typography variant="h6" sx={{ opacity: 0.9 }}>
+          <Typography variant="h6" sx={{ lineHeight: 1.5, opacity: 0.92 }}>
             Plateforme de gestion centralisée pour les centres de formation
           </Typography>
         </Box>
       </Box>
 
-      {/* Right side - Form */}
+      {/* Formulaire */}
       <Box
         sx={{
-          flex: { xs: 1, md: 0.8 },
+          flex: { xs: 1, lg: 0.8 },
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          p: 4,
-          backgroundColor: "#FFFFFF",
+          px: { xs: 2, sm: 4, md: 6 },
+          py: { xs: 3, sm: 5 },
+          bgcolor: "#fff",
         }}
       >
-        <Box sx={{ width: "100%", maxWidth: 500 }}>
-          <Box sx={{ textAlign: "center", mb: 6 }}>
-            <Typography
-              variant="h4"
-              fontWeight="bold"
-              color="primary"
-              sx={{ mb: 1 }}
-            >
-              <img src="/LOGO SMART CAMPUS.svg" alt="Logo Smart Campus" />
-            </Typography>
-            <Typography variant="h5" fontWeight="bold" color="text.primary">
+        <Paper
+          elevation={0}
+          sx={{
+            width: "100%",
+            maxWidth: 480,
+            p: { xs: 0, sm: 4 },
+            borderRadius: 3,
+            border: { sm: "1px solid #e8edf5" },
+            boxShadow: { sm: "0 14px 40px rgba(20, 48, 95, 0.08)" },
+          }}
+        >
+          <Box sx={{ textAlign: "center", mb: { xs: 3, sm: 4 } }}>
+            <Box
+              component="img"
+              src="/logoistc2.png"
+              alt="Logo de l'ISTC"
+              sx={{
+                display: "block",
+                width: "auto",
+                maxWidth: 180,
+                height: 70,
+                objectFit: "contain",
+                mx: "auto",
+                mb: 2,
+              }}
+            />
+            <Typography variant="h4" fontWeight={800} color="text.primary">
               Bienvenue
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-              Connectez-vous à votre espace administrateur
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ mt: 1, lineHeight: 1.6 }}
+            >
+              Connectez-vous à votre espace Smart Campus
             </Typography>
           </Box>
 
@@ -228,7 +258,15 @@ export default function LoginPage() {
               error={Boolean(errors.username)}
               helperText={errors.username?.message}
               placeholder="admin"
+              autoComplete="username"
               {...register("username")}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <AccountCircleOutlined color="action" />
+                  </InputAdornment>
+                ),
+              }}
             />
             <TextField
               fullWidth
@@ -238,12 +276,22 @@ export default function LoginPage() {
               margin="normal"
               error={Boolean(errors.password)}
               helperText={errors.password?.message}
+              autoComplete="current-password"
               {...register("password")}
               InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <LockOutlined color="action" />
+                  </InputAdornment>
+                ),
                 endAdornment: (
                   <InputAdornment position="end">
                     <IconButton
-                      aria-label="toggle password visibility"
+                      aria-label={
+                        showPassword
+                          ? "Masquer le mot de passe"
+                          : "Afficher le mot de passe"
+                      }
                       onClick={handleClickShowPassword}
                       edge="end"
                     >
@@ -255,7 +303,7 @@ export default function LoginPage() {
             />
 
             <Box
-              sx={{ display: "flex", justifyContent: "flex-end", mt: 1, mb: 3 }}
+              sx={{ display: "flex", justifyContent: "flex-end", mt: 1, mb: 2 }}
             >
               <Typography
                 variant="body2"
@@ -269,7 +317,7 @@ export default function LoginPage() {
               </Typography>
             </Box>
 
-            <Box sx={{ mt: 2, mb: 2 }}>
+            <Box sx={{ mt: 2, mb: 3 }}>
               <RecaptchaV2
                 siteKey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY}
                 onChange={(token) => {
@@ -296,7 +344,14 @@ export default function LoginPage() {
               size="large"
               color="primary"
               disabled={isSubmitting}
-              sx={{ py: 1.5, fontSize: "1rem", fontWeight: "bold" }}
+              sx={{
+                py: 1.4,
+                fontSize: "1rem",
+                fontWeight: 700,
+                borderRadius: 2,
+                boxShadow: "none",
+                "&:hover": { boxShadow: "none" },
+              }}
             >
               {isSubmitting ? (
                 <CircularProgress size={22} color="inherit" />
@@ -305,7 +360,7 @@ export default function LoginPage() {
               )}
             </Button>
           </form>
-        </Box>
+        </Paper>
       </Box>
     </Box>
   );
