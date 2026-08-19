@@ -535,18 +535,22 @@ export default function StudentsPage() {
     const cardElement = document.getElementById("student-card-preview");
     if (!cardElement) return;
     try {
+      // Ensure images and fonts have settled before rasterising the card.
+      await document.fonts?.ready;
       const canvas = await html2canvas(cardElement, {
-        scale: 3,
+        scale: 4,
         useCORS: true,
         backgroundColor: "#ffffff",
+        logging: false,
+        imageTimeout: 15000,
       });
       const imgData = canvas.toDataURL("image/png");
       const pdf = new jsPDF({
         orientation: "landscape",
         unit: "mm",
-        format: [86, 54],
+        format: [85.6, 54],
       });
-      pdf.addImage(imgData, "PNG", 0, 0, 86, 54, undefined, "FAST");
+      pdf.addImage(imgData, "PNG", 0, 0, 85.6, 54, undefined, "NONE");
       pdf.save(
         `Carte_Etudiant_${cardStudent?.matricule || "SansMatricule"}.pdf`,
       );
@@ -2054,8 +2058,11 @@ export default function StudentsPage() {
             const studentNameParts = studentFullName ? studentFullName.split(/\s+/) : [];
             const studentNom = studentNameParts[0] || "-";
             const studentPrenom = studentNameParts.slice(1).join(" ") || "-";
+            const photoDocument = cardStudent.documents?.find((document) =>
+              document.type_document?.toLowerCase().includes("photo"),
+            );
             const studentFiliere = typeof cardStudent.filiere === "object"
-              ? cardStudent.filiere?.intitule
+              ? cardStudent.filiere?.intitule || cardStudent.filiere?.nom
               : filieres.find((f) => f.id === cardStudent.filiere)?.intitule || cardStudent.filiere || "-";
             const studentNiveau = cardStudent.inscriptions && cardStudent.inscriptions.length > 0
               ? cardStudent.inscriptions[0].niveau_nom
@@ -2068,14 +2075,14 @@ export default function StudentsPage() {
               <Box
                 id="student-card-preview"
                 sx={{
-                  width: 380,
-                  height: 240,
+                  width: 428,
+                  height: 270,
                   bgcolor: "white",
-                  border: "1px solid #dfe5ef",
-                  borderRadius: 2,
-                  boxShadow: 3,
+                  border: `2px solid ${primaryColor}`,
+                  borderRadius: 1.5,
+                  boxShadow: "0 10px 28px rgba(15, 23, 42, 0.18)",
                   overflow: "hidden",
-                  fontFamily: "sans-serif",
+                  fontFamily: "Arial, Helvetica, sans-serif",
                   display: "flex",
                   flexDirection: "column",
                 }}
@@ -2084,50 +2091,50 @@ export default function StudentsPage() {
                   sx={{
                     display: "flex",
                     alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: 1,
-                    px: 1.5,
-                    py: 1,
-                    borderBottom: "1px solid #e5e7eb",
-                    bgcolor: "#f8fafc",
+                    gap: 1.25,
+                    px: 1.75,
+                    py: 1.1,
+                    bgcolor: primaryColor,
+                    color: "white",
                   }}
                 >
                   <Box
                     sx={{
-                      width: 32,
-                      height: 32,
-                      minWidth: 32,
+                      width: 38,
+                      height: 38,
+                      minWidth: 38,
                       borderRadius: 1,
-                      backgroundColor: primaryColor,
+                      backgroundColor: "white",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      color: "white",
+                      color: primaryColor,
                       fontWeight: 700,
                       fontSize: 12,
+                      overflow: "hidden",
                     }}
                   >
-                    {schoolName?.charAt(0)?.toUpperCase() || "S"}
+                    {logoUrl ? <img src={logoUrl} alt="Logo de l'établissement" crossOrigin="anonymous" style={{ width: "100%", height: "100%", objectFit: "contain", padding: 3 }} /> : schoolName?.charAt(0)?.toUpperCase() || "S"}
                   </Box>
 
-                  <Typography variant="caption" sx={{ flex: 1, fontWeight: 700, color: "text.primary", fontSize: 10, textTransform: "uppercase", textAlign: "left" }}>
+                  <Typography variant="caption" sx={{ flex: 1, fontWeight: 800, color: "white", fontSize: 10, textTransform: "uppercase", textAlign: "left", letterSpacing: 0.3 }}>
                     {schoolName.toUpperCase()}
                   </Typography>
                 </Box>
 
-                <Box sx={{ px: 1.5, py: 0.75, textAlign: "center" }}>
-                  <Typography variant="caption" sx={{ fontWeight: 700, letterSpacing: 0.8, fontSize: 10, color: "primary.main", textTransform: "uppercase" }}>
+                <Box sx={{ px: 1.75, py: 0.65, textAlign: "center", bgcolor: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
+                  <Typography variant="caption" sx={{ fontWeight: 800, letterSpacing: 1, fontSize: 9, color: primaryColor, textTransform: "uppercase" }}>
                     Carte d&apos;étudiant
                   </Typography>
                 </Box>
 
-                <Box sx={{ px: 1.5, pb: 1.25, flex: 1, display: "flex", gap: 1.25 }}>
+                <Box sx={{ px: 1.75, py: 1.25, flex: 1, display: "flex", gap: 1.5 }}>
                   <Box
                     sx={{
-                      width: 74,
-                      height: 94,
+                      width: 82,
+                      height: 106,
                       bgcolor: "#eef2f7",
-                      border: "1px solid #d9e0eb",
+                      border: `2px solid ${secondaryColor}`,
                       borderRadius: 1,
                       display: "flex",
                       alignItems: "center",
@@ -2136,10 +2143,11 @@ export default function StudentsPage() {
                       flexShrink: 0,
                     }}
                   >
-                    {cardStudent.documents && cardStudent.documents.find((d) => d.type_document === "Photo") ? (
+                    {photoDocument?.fichier ? (
                       <img
-                        src={cardStudent.documents.find((d) => d.type_document === "Photo").fichier}
+                        src={getMediaUrl(photoDocument.fichier)}
                         alt="Photo"
+                        crossOrigin="anonymous"
                         style={{ width: "100%", height: "100%", objectFit: "cover" }}
                       />
                     ) : (
@@ -2147,23 +2155,23 @@ export default function StudentsPage() {
                     )}
                   </Box>
 
-                  <Box sx={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: 0.35, minWidth: 0 }}>
-                    <Typography sx={{ fontSize: 9.5, color: "text.primary", fontWeight: 700, textTransform: "uppercase", lineHeight: 1.2, overflowWrap: "anywhere", wordBreak: "break-word" }}>
+                  <Box sx={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: 0.5, minWidth: 0 }}>
+                    <Typography sx={{ fontSize: 12, color: secondaryColor, fontWeight: 800, textTransform: "uppercase", lineHeight: 1.15, overflowWrap: "anywhere", wordBreak: "break-word" }}>
                       <Box component="span" sx={{ fontWeight: 600, color: "text.secondary" }}>NOM :</Box> {studentNom}
                     </Typography>
-                    <Typography sx={{ fontSize: 9.5, color: "text.primary", lineHeight: 1.2, overflowWrap: "anywhere", wordBreak: "break-word" }}>
+                    <Typography sx={{ fontSize: 10.5, color: secondaryColor, fontWeight: 700, textTransform: "uppercase", lineHeight: 1.15, overflowWrap: "anywhere", wordBreak: "break-word" }}>
                       <Box component="span" sx={{ fontWeight: 600, color: "text.secondary" }}>PRÉNOM :</Box> {studentPrenom}
                     </Typography>
-                    <Typography sx={{ fontSize: 9.5, color: "text.primary", lineHeight: 1.2, overflowWrap: "anywhere", wordBreak: "break-word" }}>
+                    <Typography sx={{ mt: 0.25, pt: 0.55, borderTop: "1px solid #dbe3ee", fontSize: 8.2, color: "#334155", lineHeight: 1.2, overflowWrap: "anywhere", wordBreak: "break-word" }}>
                       <Box component="span" sx={{ fontWeight: 600, color: "text.secondary" }}>MATRICULE :</Box> {cardStudent.matricule || "N/A"}
                     </Typography>
-                    <Typography sx={{ fontSize: 9.5, color: "text.primary", lineHeight: 1.2, overflowWrap: "anywhere", wordBreak: "break-word" }}>
+                    <Typography sx={{ fontSize: 8.2, color: "#334155", lineHeight: 1.2, overflowWrap: "anywhere", wordBreak: "break-word" }}>
                       <Box component="span" sx={{ fontWeight: 600, color: "text.secondary" }}>FILIÈRE :</Box> {studentFiliere}
                     </Typography>
-                    <Typography sx={{ fontSize: 9.5, color: "text.primary", lineHeight: 1.2, overflowWrap: "anywhere", wordBreak: "break-word" }}>
+                    <Typography sx={{ fontSize: 8.2, color: "#334155", lineHeight: 1.2, overflowWrap: "anywhere", wordBreak: "break-word" }}>
                       <Box component="span" sx={{ fontWeight: 600, color: "text.secondary" }}>NIVEAU :</Box> {studentNiveau}
                     </Typography>
-                    <Typography sx={{ fontSize: 9.5, color: "text.primary", lineHeight: 1.2, overflowWrap: "anywhere", wordBreak: "break-word" }}>
+                    <Typography sx={{ fontSize: 8.2, color: "#334155", lineHeight: 1.2, overflowWrap: "anywhere", wordBreak: "break-word" }}>
                       <Box component="span" sx={{ fontWeight: 600, color: "text.secondary" }}>ANNÉE :</Box> {studentAnnee}
                     </Typography>
                   </Box>
@@ -2171,33 +2179,27 @@ export default function StudentsPage() {
 
                 <Box
                   sx={{
-                    px: 1.5,
-                    pb: 1,
-                    pt: 0.5,
+                    px: 1.75,
+                    py: 0.7,
                     display: "flex",
                     alignItems: "flex-end",
                     justifyContent: "space-between",
-                    borderTop: "1px solid #e5e7eb",
-                    bgcolor: "#fafbfc",
+                    borderTop: `2px solid ${primaryColor}`,
+                    bgcolor: "#f8fafc",
                   }}
                 >
-                  <Typography sx={{ fontSize: 9, color: "text.secondary", fontStyle: "italic" }}>Signature</Typography>
-                  <Box
-                    sx={{
-                      width: 36,
-                      height: 36,
-                      border: "1px dashed #94a3b8",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      color: "text.secondary",
-                      fontSize: 7,
-                      fontWeight: 700,
-                      borderRadius: 0.75,
-                    }}
-                  >
-                    QR
+                  <Box>
+                    <Typography sx={{ fontSize: 7, color: "#64748b", fontStyle: "italic" }}>Document strictement personnel</Typography>
+                    <Typography sx={{ fontSize: 7.2, color: secondaryColor, fontWeight: 800, mt: 0.2 }}>{directeurTitre}</Typography>
                   </Box>
+                  {signatureUrl && (
+                    <img
+                      src={signatureUrl}
+                      alt="Signature de direction"
+                      crossOrigin="anonymous"
+                      style={{ width: 62, height: 26, objectFit: "contain" }}
+                    />
+                  )}
                 </Box>
               </Box>
             );
