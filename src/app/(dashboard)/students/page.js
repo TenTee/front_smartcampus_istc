@@ -2058,10 +2058,8 @@ export default function StudentsPage() {
             const photoDocument = cardStudent.documents?.find((document) =>
               document.type_document?.toLowerCase().includes("photo"),
             );
-            const studentFiliere = typeof cardStudent.filiere === "object"
-              ? cardStudent.filiere?.intitule || cardStudent.filiere?.nom
-              : filieres.find((f) => f.id === cardStudent.filiere)?.intitule || cardStudent.filiere || "-";
-            const studentAddress = cardStudent.adresse || cardStudent.lieu_naissance || studentFiliere;
+            const studentClass = cardStudent.inscriptions?.[0]?.classe_nom || cardStudent.inscriptions?.[0]?.classe?.nom || cardStudent.classe?.nom || "-";
+            const birthPlace = cardStudent.lieu_naissance || "-";
 
             return (
               <Box
@@ -2153,12 +2151,15 @@ export default function StudentsPage() {
                     )}
                   </Box>
 
-                  <Box sx={{ flex: 1, pt: 7.5, display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
-                    <Typography sx={{ fontSize: 10, color: "#27206a", lineHeight: 1.15, overflowWrap: "anywhere" }}><Box component="span">NAME : </Box><Box component="span" sx={{ fontWeight: 800 }}>{studentFullName || "-"}</Box></Typography>
-                    <Typography sx={{ fontSize: 10, color: "#27206a", lineHeight: 1.15 }}><Box component="span">BIRTH : </Box><Box component="span" sx={{ fontWeight: 800 }}>{formatDate(cardStudent.date_naissance)}</Box></Typography>
-                    <Typography sx={{ fontSize: 9.4, color: "#27206a", lineHeight: 1.15, overflowWrap: "anywhere" }}><Box component="span">ADRESS : </Box><Box component="span" sx={{ fontWeight: 800 }}>{studentAddress || "-"}</Box></Typography>
-                    <Typography sx={{ fontSize: 10, color: "#27206a", lineHeight: 1.15 }}><Box component="span">ID NO : </Box><Box component="span" sx={{ fontWeight: 800 }}>{cardStudent.matricule || "N/A"}</Box></Typography>
-                    <Box sx={{ mt: 1.2, ml: "auto", mr: 1.5, width: 93, height: 22, background: "repeating-linear-gradient(90deg, #27206a 0 2px, transparent 2px 4px, #27206a 4px 5px, transparent 5px 7px)" }} />
+                  <Box sx={{ flex: 1, pt: 6.7, pr: 1.4, display: "flex", flexDirection: "column", gap: 0.6, minWidth: 0 }}>
+                    <Typography sx={{ fontSize: 8.9, color: "#27206a", lineHeight: 1.25, overflowWrap: "anywhere" }}><Box component="span" sx={{ display: "inline-block", width: 72, color: "#277fb9", fontWeight: 800 }}>MATRICULE</Box><Box component="span" sx={{ fontWeight: 800 }}>{cardStudent.matricule || "N/A"}</Box></Typography>
+                    <Typography sx={{ fontSize: 8.9, color: "#27206a", lineHeight: 1.25, overflowWrap: "anywhere" }}><Box component="span" sx={{ display: "inline-block", width: 72, color: "#277fb9", fontWeight: 800 }}>NOM</Box><Box component="span" sx={{ fontWeight: 800, textTransform: "uppercase" }}>{studentFullName || "-"}</Box></Typography>
+                    <Typography sx={{ fontSize: 8.9, color: "#27206a", lineHeight: 1.25, overflowWrap: "anywhere" }}><Box component="span" sx={{ display: "inline-block", width: 72, color: "#277fb9", fontWeight: 800 }}>NÉ(E) LE</Box><Box component="span" sx={{ fontWeight: 800 }}>{formatDate(cardStudent.date_naissance)}</Box></Typography>
+                    <Typography sx={{ fontSize: 8.9, color: "#27206a", lineHeight: 1.25, overflowWrap: "anywhere" }}><Box component="span" sx={{ display: "inline-block", width: 72, color: "#277fb9", fontWeight: 800 }}>LIEU</Box><Box component="span" sx={{ fontWeight: 800 }}>{birthPlace}</Box></Typography>
+                    <Typography sx={{ fontSize: 8.9, color: "#27206a", lineHeight: 1.25, overflowWrap: "anywhere" }}><Box component="span" sx={{ display: "inline-block", width: 72, color: "#277fb9", fontWeight: 800 }}>CLASSE</Box><Box component="span" sx={{ fontWeight: 800 }}>{studentClass}</Box></Typography>
+                    <Typography sx={{ fontSize: 8.9, color: "#27206a", lineHeight: 1.25, overflowWrap: "anywhere" }}><Box component="span" sx={{ display: "inline-block", width: 72, color: "#277fb9", fontWeight: 800 }}>CONTACT</Box><Box component="span" sx={{ fontWeight: 800 }}>{cardStudent.contact || "-"}</Box></Typography>
+                    <Typography sx={{ fontSize: 8.5, color: "#27206a", lineHeight: 1.25, overflowWrap: "anywhere" }}><Box component="span" sx={{ display: "inline-block", width: 72, color: "#277fb9", fontWeight: 800 }}>PARENT</Box><Box component="span" sx={{ fontWeight: 800 }}>{cardStudent.whatsapp_parent || cardStudent.nom_parent || "-"}</Box></Typography>
+                    <Box sx={{ mt: 0.45, ml: "auto", mr: 1.5, width: 86, height: 15, opacity: 0.88, background: "repeating-linear-gradient(90deg, #27206a 0 2px, transparent 2px 4px, #27206a 4px 5px, transparent 5px 7px)" }} />
                   </Box>
                 </Box>
               </Box>
