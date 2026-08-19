@@ -2055,21 +2055,13 @@ export default function StudentsPage() {
         >
           {cardStudent && (() => {
             const studentFullName = (cardStudent.nom || "").trim();
-            const studentNameParts = studentFullName ? studentFullName.split(/\s+/) : [];
-            const studentNom = studentNameParts[0] || "-";
-            const studentPrenom = studentNameParts.slice(1).join(" ") || "-";
             const photoDocument = cardStudent.documents?.find((document) =>
               document.type_document?.toLowerCase().includes("photo"),
             );
             const studentFiliere = typeof cardStudent.filiere === "object"
               ? cardStudent.filiere?.intitule || cardStudent.filiere?.nom
               : filieres.find((f) => f.id === cardStudent.filiere)?.intitule || cardStudent.filiere || "-";
-            const studentNiveau = cardStudent.inscriptions && cardStudent.inscriptions.length > 0
-              ? cardStudent.inscriptions[0].niveau_nom
-              : "-";
-            const studentAnnee = cardStudent.inscriptions && cardStudent.inscriptions.length > 0
-              ? cardStudent.inscriptions[0].annee_academique
-              : "2025/2026";
+            const studentAddress = cardStudent.adresse || cardStudent.lieu_naissance || studentFiliere;
 
             return (
               <Box
@@ -2077,65 +2069,71 @@ export default function StudentsPage() {
                 sx={{
                   width: 428,
                   height: 270,
-                  bgcolor: "white",
-                  border: `2px solid ${primaryColor}`,
-                  borderRadius: 1.5,
+                  bgcolor: "#f9fdff",
+                  border: 0,
+                  borderRadius: 0,
                   boxShadow: "0 10px 28px rgba(15, 23, 42, 0.18)",
                   overflow: "hidden",
                   fontFamily: "Arial, Helvetica, sans-serif",
                   display: "flex",
                   flexDirection: "column",
+                  position: "relative",
+                  backgroundImage: "linear-gradient(145deg, rgba(225,244,250,.9), transparent 48%), linear-gradient(35deg, rgba(220,239,247,.75), transparent 55%)",
                 }}
               >
+                <Box sx={{ position: "absolute", top: 0, right: 0, width: 35, height: 36, bgcolor: "#44a9e9" }} />
+                <Box sx={{ position: "absolute", top: 0, left: 57, width: 56, height: 62, bgcolor: "#27206a", clipPath: "polygon(50% 0,100% 35%,50% 100%,0 35%)" }}>
+                  <SchoolIcon sx={{ position: "absolute", top: 21, left: 17, color: "white", fontSize: 23 }} />
+                </Box>
+                <Box sx={{ position: "absolute", left: -13, bottom: -33, width: 154, height: 105, bgcolor: "#08a9e5", transform: "skewY(43deg)" }} />
+                <Box sx={{ position: "absolute", left: -5, bottom: -50, width: 165, height: 105, bgcolor: "#1768b5", transform: "skewY(43deg)" }} />
+                <Box sx={{ position: "absolute", left: 6, bottom: -65, width: 175, height: 105, bgcolor: "#27206a", transform: "skewY(43deg)" }} />
                 <Box
                   sx={{
                     display: "flex",
                     alignItems: "center",
-                    gap: 1.25,
-                    px: 1.75,
-                    py: 1.1,
-                    bgcolor: primaryColor,
-                    color: "white",
+                    gap: 1,
+                    ml: 13,
+                    pt: 2.5,
+                    pb: 1.5,
+                    pr: 4.5,
+                    zIndex: 1,
                   }}
                 >
                   <Box
                     sx={{
-                      width: 38,
-                      height: 38,
-                      minWidth: 38,
-                      borderRadius: 1,
-                      backgroundColor: "white",
+                      width: 0,
+                      height: 0,
+                      minWidth: 0,
                       display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      color: primaryColor,
-                      fontWeight: 700,
-                      fontSize: 12,
-                      overflow: "hidden",
+                      overflow: "hidden"
                     }}
-                  >
-                    {logoUrl ? <img src={logoUrl} alt="Logo de l'établissement" crossOrigin="anonymous" style={{ width: "100%", height: "100%", objectFit: "contain", padding: 3 }} /> : schoolName?.charAt(0)?.toUpperCase() || "S"}
-                  </Box>
+                  />
 
-                  <Typography variant="caption" sx={{ flex: 1, fontWeight: 800, color: "white", fontSize: 10, textTransform: "uppercase", textAlign: "left", letterSpacing: 0.3 }}>
+                  <Box>
+                  <Typography sx={{ fontFamily: "Georgia, serif", fontSize: 19, lineHeight: 1, color: "#27206a" }}>
                     {schoolName.toUpperCase()}
                   </Typography>
+                  <Typography sx={{ fontFamily: "Georgia, serif", fontSize: 8.5, color: "#27206a", mt: 0.35 }}>
+                    {config?.adresse || `${schoolVille}, Cameroun`}
+                  </Typography>
+                  </Box>
                 </Box>
 
-                <Box sx={{ px: 1.75, py: 0.65, textAlign: "center", bgcolor: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
-                  <Typography variant="caption" sx={{ fontWeight: 800, letterSpacing: 1, fontSize: 9, color: primaryColor, textTransform: "uppercase" }}>
-                    Carte d&apos;étudiant
+                <Box sx={{ zIndex: 1, ml: 25, width: 182, height: 35, px: 2.2, display: "flex", alignItems: "center", bgcolor: "#148ecf", borderRadius: "0 20px 20px 0" }}>
+                  <Typography sx={{ fontSize: 17, fontWeight: 800, letterSpacing: -0.4, color: "white", textTransform: "uppercase" }}>
+                    Student Card
                   </Typography>
                 </Box>
 
-                <Box sx={{ px: 1.75, py: 1.25, flex: 1, display: "flex", gap: 1.5 }}>
+                <Box sx={{ zIndex: 1, px: 1.25, pt: 1.25, flex: 1, display: "flex", gap: 2 }}>
                   <Box
                     sx={{
-                      width: 82,
-                      height: 106,
-                      bgcolor: "#eef2f7",
-                      border: `2px solid ${secondaryColor}`,
-                      borderRadius: 1,
+                      width: 165,
+                      height: 198,
+                      bgcolor: "#eaf4f8",
+                      border: "7px solid #29206c",
+                      borderRadius: 0,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -2151,55 +2149,17 @@ export default function StudentsPage() {
                         style={{ width: "100%", height: "100%", objectFit: "cover" }}
                       />
                     ) : (
-                      <BadgeIcon sx={{ fontSize: 34, color: "grey.400" }} />
+                      <BadgeIcon sx={{ fontSize: 42, color: "grey.400" }} />
                     )}
                   </Box>
 
-                  <Box sx={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: 0.5, minWidth: 0 }}>
-                    <Typography sx={{ fontSize: 12, color: secondaryColor, fontWeight: 800, textTransform: "uppercase", lineHeight: 1.15, overflowWrap: "anywhere", wordBreak: "break-word" }}>
-                      <Box component="span" sx={{ fontWeight: 600, color: "text.secondary" }}>NOM :</Box> {studentNom}
-                    </Typography>
-                    <Typography sx={{ fontSize: 10.5, color: secondaryColor, fontWeight: 700, textTransform: "uppercase", lineHeight: 1.15, overflowWrap: "anywhere", wordBreak: "break-word" }}>
-                      <Box component="span" sx={{ fontWeight: 600, color: "text.secondary" }}>PRÉNOM :</Box> {studentPrenom}
-                    </Typography>
-                    <Typography sx={{ mt: 0.25, pt: 0.55, borderTop: "1px solid #dbe3ee", fontSize: 8.2, color: "#334155", lineHeight: 1.2, overflowWrap: "anywhere", wordBreak: "break-word" }}>
-                      <Box component="span" sx={{ fontWeight: 600, color: "text.secondary" }}>MATRICULE :</Box> {cardStudent.matricule || "N/A"}
-                    </Typography>
-                    <Typography sx={{ fontSize: 8.2, color: "#334155", lineHeight: 1.2, overflowWrap: "anywhere", wordBreak: "break-word" }}>
-                      <Box component="span" sx={{ fontWeight: 600, color: "text.secondary" }}>FILIÈRE :</Box> {studentFiliere}
-                    </Typography>
-                    <Typography sx={{ fontSize: 8.2, color: "#334155", lineHeight: 1.2, overflowWrap: "anywhere", wordBreak: "break-word" }}>
-                      <Box component="span" sx={{ fontWeight: 600, color: "text.secondary" }}>NIVEAU :</Box> {studentNiveau}
-                    </Typography>
-                    <Typography sx={{ fontSize: 8.2, color: "#334155", lineHeight: 1.2, overflowWrap: "anywhere", wordBreak: "break-word" }}>
-                      <Box component="span" sx={{ fontWeight: 600, color: "text.secondary" }}>ANNÉE :</Box> {studentAnnee}
-                    </Typography>
+                  <Box sx={{ flex: 1, pt: 1.75, display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
+                    <Typography sx={{ fontSize: 10, color: "#27206a", lineHeight: 1.15, overflowWrap: "anywhere" }}><Box component="span">NAME : </Box><Box component="span" sx={{ fontWeight: 800 }}>{studentFullName || "-"}</Box></Typography>
+                    <Typography sx={{ fontSize: 10, color: "#27206a", lineHeight: 1.15 }}><Box component="span">BIRTH : </Box><Box component="span" sx={{ fontWeight: 800 }}>{formatDate(cardStudent.date_naissance)}</Box></Typography>
+                    <Typography sx={{ fontSize: 9.4, color: "#27206a", lineHeight: 1.15, overflowWrap: "anywhere" }}><Box component="span">ADRESS : </Box><Box component="span" sx={{ fontWeight: 800 }}>{studentAddress || "-"}</Box></Typography>
+                    <Typography sx={{ fontSize: 10, color: "#27206a", lineHeight: 1.15 }}><Box component="span">ID NO : </Box><Box component="span" sx={{ fontWeight: 800 }}>{cardStudent.matricule || "N/A"}</Box></Typography>
+                    <Box sx={{ mt: 1.2, ml: "auto", mr: 1.5, width: 93, height: 22, background: "repeating-linear-gradient(90deg, #27206a 0 2px, transparent 2px 4px, #27206a 4px 5px, transparent 5px 7px)" }} />
                   </Box>
-                </Box>
-
-                <Box
-                  sx={{
-                    px: 1.75,
-                    py: 0.7,
-                    display: "flex",
-                    alignItems: "flex-end",
-                    justifyContent: "space-between",
-                    borderTop: `2px solid ${primaryColor}`,
-                    bgcolor: "#f8fafc",
-                  }}
-                >
-                  <Box>
-                    <Typography sx={{ fontSize: 7, color: "#64748b", fontStyle: "italic" }}>Document strictement personnel</Typography>
-                    <Typography sx={{ fontSize: 7.2, color: secondaryColor, fontWeight: 800, mt: 0.2 }}>{directeurTitre}</Typography>
-                  </Box>
-                  {signatureUrl && (
-                    <img
-                      src={signatureUrl}
-                      alt="Signature de direction"
-                      crossOrigin="anonymous"
-                      style={{ width: 62, height: 26, objectFit: "contain" }}
-                    />
-                  )}
                 </Box>
               </Box>
             );
