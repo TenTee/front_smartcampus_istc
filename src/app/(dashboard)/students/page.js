@@ -2080,18 +2080,18 @@ export default function StudentsPage() {
                 }}
               >
                 <Box sx={{ position: "absolute", top: 0, right: 0, width: 35, height: 36, bgcolor: "#44a9e9" }} />
-                <Box sx={{ position: "absolute", top: 0, left: 57, width: 56, height: 62, bgcolor: "#27206a", clipPath: "polygon(50% 0,100% 35%,50% 100%,0 35%)" }}>
-                  <SchoolIcon sx={{ position: "absolute", top: 21, left: 17, color: "white", fontSize: 23 }} />
+                <Box sx={{ position: "absolute", top: -9, left: 67, width: 57, height: 57, bgcolor: "#27206a", transform: "rotate(45deg)", zIndex: 1 }}>
+                  <SchoolIcon sx={{ position: "absolute", top: 17, left: 17, color: "white", fontSize: 23, transform: "rotate(-45deg)" }} />
                 </Box>
-                <Box sx={{ position: "absolute", left: -13, bottom: -78, width: 154, height: 105, bgcolor: "#08a9e5", transform: "skewY(43deg)", zIndex: 0 }} />
-                <Box sx={{ position: "absolute", left: -5, bottom: -93, width: 165, height: 105, bgcolor: "#1768b5", transform: "skewY(43deg)", zIndex: 0 }} />
-                <Box sx={{ position: "absolute", left: 6, bottom: -108, width: 175, height: 105, bgcolor: "#27206a", transform: "skewY(43deg)", zIndex: 0 }} />
+                <Box sx={{ position: "absolute", left: -13, bottom: -43, width: 154, height: 105, bgcolor: "#08a9e5", transform: "skewY(43deg)", zIndex: 0 }} />
+                <Box sx={{ position: "absolute", left: -5, bottom: -58, width: 165, height: 105, bgcolor: "#1768b5", transform: "skewY(43deg)", zIndex: 0 }} />
+                <Box sx={{ position: "absolute", left: 6, bottom: -73, width: 175, height: 105, bgcolor: "#27206a", transform: "skewY(43deg)", zIndex: 0 }} />
                 <Box
                   sx={{
                     display: "flex",
                     alignItems: "center",
                     gap: 1,
-                    ml: 13,
+                    ml: 16.5,
                     pt: 2.5,
                     pb: 1.5,
                     pr: 4.5,
@@ -2151,7 +2151,7 @@ export default function StudentsPage() {
                     )}
                   </Box>
 
-                  <Box sx={{ flex: 1, pt: 6.7, pr: 1.4, display: "flex", flexDirection: "column", gap: 0.6, minWidth: 0 }}>
+                  <Box sx={{ flex: 1, pt: 5.7, pr: 1.4, display: "flex", flexDirection: "column", gap: 0.35, minWidth: 0 }}>
                     <Typography sx={{ fontSize: 8.9, color: "#27206a", lineHeight: 1.25, overflowWrap: "anywhere" }}><Box component="span" sx={{ display: "inline-block", width: 72, color: "#277fb9", fontWeight: 800 }}>MATRICULE</Box><Box component="span" sx={{ fontWeight: 800 }}>{cardStudent.matricule || "N/A"}</Box></Typography>
                     <Typography sx={{ fontSize: 8.9, color: "#27206a", lineHeight: 1.25, overflowWrap: "anywhere" }}><Box component="span" sx={{ display: "inline-block", width: 72, color: "#277fb9", fontWeight: 800 }}>NOM</Box><Box component="span" sx={{ fontWeight: 800, textTransform: "uppercase" }}>{studentFullName || "-"}</Box></Typography>
                     <Typography sx={{ fontSize: 8.9, color: "#27206a", lineHeight: 1.25, overflowWrap: "anywhere" }}><Box component="span" sx={{ display: "inline-block", width: 72, color: "#277fb9", fontWeight: 800 }}>NÉ(E) LE</Box><Box component="span" sx={{ fontWeight: 800 }}>{formatDate(cardStudent.date_naissance)}</Box></Typography>
