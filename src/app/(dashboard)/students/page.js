@@ -2085,9 +2085,9 @@ export default function StudentsPage() {
                 <Box sx={{ position: "absolute", top: 0, left: 57, width: 56, height: 62, bgcolor: "#27206a", clipPath: "polygon(50% 0,100% 35%,50% 100%,0 35%)" }}>
                   <SchoolIcon sx={{ position: "absolute", top: 21, left: 17, color: "white", fontSize: 23 }} />
                 </Box>
-                <Box sx={{ position: "absolute", left: -13, bottom: -33, width: 154, height: 105, bgcolor: "#08a9e5", transform: "skewY(43deg)" }} />
-                <Box sx={{ position: "absolute", left: -5, bottom: -50, width: 165, height: 105, bgcolor: "#1768b5", transform: "skewY(43deg)" }} />
-                <Box sx={{ position: "absolute", left: 6, bottom: -65, width: 175, height: 105, bgcolor: "#27206a", transform: "skewY(43deg)" }} />
+                <Box sx={{ position: "absolute", left: -13, bottom: -78, width: 154, height: 105, bgcolor: "#08a9e5", transform: "skewY(43deg)", zIndex: 0 }} />
+                <Box sx={{ position: "absolute", left: -5, bottom: -93, width: 165, height: 105, bgcolor: "#1768b5", transform: "skewY(43deg)", zIndex: 0 }} />
+                <Box sx={{ position: "absolute", left: 6, bottom: -108, width: 175, height: 105, bgcolor: "#27206a", transform: "skewY(43deg)", zIndex: 0 }} />
                 <Box
                   sx={{
                     display: "flex",
@@ -2126,7 +2126,7 @@ export default function StudentsPage() {
                   </Typography>
                 </Box>
 
-                <Box sx={{ zIndex: 1, px: 1.25, pt: 1.25, flex: 1, display: "flex", gap: 2 }}>
+                <Box sx={{ position: "absolute", zIndex: 2, top: 94, left: 7, right: 0, display: "flex", gap: 2 }}>
                   <Box
                     sx={{
                       width: 165,
@@ -2153,7 +2153,7 @@ export default function StudentsPage() {
                     )}
                   </Box>
 
-                  <Box sx={{ flex: 1, pt: 1.75, display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
+                  <Box sx={{ flex: 1, pt: 7.5, display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
                     <Typography sx={{ fontSize: 10, color: "#27206a", lineHeight: 1.15, overflowWrap: "anywhere" }}><Box component="span">NAME : </Box><Box component="span" sx={{ fontWeight: 800 }}>{studentFullName || "-"}</Box></Typography>
                     <Typography sx={{ fontSize: 10, color: "#27206a", lineHeight: 1.15 }}><Box component="span">BIRTH : </Box><Box component="span" sx={{ fontWeight: 800 }}>{formatDate(cardStudent.date_naissance)}</Box></Typography>
                     <Typography sx={{ fontSize: 9.4, color: "#27206a", lineHeight: 1.15, overflowWrap: "anywhere" }}><Box component="span">ADRESS : </Box><Box component="span" sx={{ fontWeight: 800 }}>{studentAddress || "-"}</Box></Typography>
