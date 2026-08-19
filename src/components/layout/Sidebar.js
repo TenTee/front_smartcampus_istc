@@ -110,7 +110,7 @@ export default function Sidebar() {
 
     if (Object.keys(perms).length > 0) {
       if (route.label === 'Étudiants') return hasAccess(perms.can_manage_etudiants);
-      if (route.label === 'Formateurs') return hasAccess(perms.can_manage_rh);
+      if (route.label === 'Enseignants') return hasAccess(perms.can_manage_rh);
 
       const pGroup = [
         'Pédagogie',

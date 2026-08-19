@@ -32,7 +32,7 @@ export const routes = [
     permission: 'all',
   },
   {
-    label: 'Formateurs',
+    label: 'Enseignants',
     path: '/formateurs',
     icon: PersonIcon,
     permission: 'all',

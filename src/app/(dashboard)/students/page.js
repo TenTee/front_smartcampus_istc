@@ -536,12 +536,17 @@ export default function StudentsPage() {
     if (!cardElement) return;
     try {
       const canvas = await html2canvas(cardElement, {
-        scale: 2,
+        scale: 3,
         useCORS: true,
+        backgroundColor: "#ffffff",
       });
       const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF("landscape", "mm", "credit-card"); // ~86x54mm
-      pdf.addImage(imgData, "PNG", 0, 0, 86, 54);
+      const pdf = new jsPDF({
+        orientation: "landscape",
+        unit: "mm",
+        format: [86, 54],
+      });
+      pdf.addImage(imgData, "PNG", 0, 0, 86, 54, undefined, "FAST");
       pdf.save(
         `Carte_Etudiant_${cardStudent?.matricule || "SansMatricule"}.pdf`,
       );
@@ -1575,7 +1580,7 @@ export default function StudentsPage() {
       <Dialog open={openDelete} onClose={() => setOpenDelete(false)}>
         <DialogTitle>Confirmer la suppression</DialogTitle>
         <DialogContent>
-          Voulez-vous vraiment supprimer l'étudiant {studentToDelete?.nom} ?
+          Voulez-vous vraiment supprimer l&apos;étudiant {studentToDelete?.nom} ?
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDelete(false)}>Annuler</Button>
@@ -1592,7 +1597,7 @@ export default function StudentsPage() {
       >
         <Box sx={{ width: 400, p: 3 }}>
           <Typography variant="h6" gutterBottom>
-            Détails de l'étudiant
+            Détails de l&apos;étudiant
           </Typography>
           <Divider sx={{ mb: 2 }} />
           {selectedStudent && (
@@ -1983,7 +1988,7 @@ export default function StudentsPage() {
         <DialogTitle>Echeancier personnalise</DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Definissez les tranches personnalisees pour cet etudiant. Cela remplacera l'echeancier global.
+            Definissez les tranches personnalisees pour cet etudiant. Cela remplacera l&apos;echeancier global.
           </Typography>
           {(paymentPlanForm.tranches || []).map((tr, idx) => (
             <Grid container spacing={1} key={idx} sx={{ mb: 1 }} alignItems="center">
@@ -2048,8 +2053,8 @@ export default function StudentsPage() {
             <Box
               id="student-card-preview"
               sx={{
-                width: 325, // ~86mm
-                height: 204, // ~54mm
+                width: 340,
+                height: 214,
                 bgcolor: "white",
                 borderRadius: 2,
                 boxShadow: 3,
@@ -2065,26 +2070,26 @@ export default function StudentsPage() {
                 sx={{
                   bgcolor: primaryColor,
                   color: "white",
-                  py: 1,
-                  px: 2,
+                  py: 0.75,
+                  px: 1.5,
                   textAlign: "center",
                 }}
               >
-                <Typography variant="subtitle2" fontWeight="bold">
+                <Typography variant="subtitle2" fontWeight="bold" sx={{ fontSize: 11, lineHeight: 1.2 }}>
                   {schoolName.toUpperCase()}
                 </Typography>
-                <Typography variant="caption" sx={{ letterSpacing: 1 }}>
-                  CARTE D'ÉTUDIANT
+                <Typography variant="caption" sx={{ letterSpacing: 1, fontSize: 8.5, lineHeight: 1.2 }}>
+                  CARTE D&apos;ÉTUDIANT
                 </Typography>
               </Box>
 
               {/* Body */}
-              <Box sx={{ p: 2, display: "flex", gap: 2, flex: 1 }}>
+              <Box sx={{ p: 1.25, display: "flex", gap: 1.25, flex: 1, alignItems: "stretch" }}>
                 {/* Photo Placeholder */}
                 <Box
                   sx={{
-                    width: 70,
-                    height: 90,
+                    width: 64,
+                    height: 82,
                     bgcolor: "grey.200",
                     borderRadius: 1,
                     border: "1px solid #ddd",
@@ -2113,7 +2118,7 @@ export default function StudentsPage() {
                       }}
                     />
                   ) : (
-                    <BadgeIcon sx={{ fontSize: 40, color: "grey.400" }} />
+                    <BadgeIcon sx={{ fontSize: 36, color: "grey.400" }} />
                   )}
                 </Box>
 
@@ -2122,64 +2127,63 @@ export default function StudentsPage() {
                   sx={{
                     display: "flex",
                     flexDirection: "column",
-                    gap: 0.5,
+                    gap: 0.25,
                     flex: 1,
-                    pt: 0.5,
+                    minWidth: 0,
+                    pt: 0.25,
                   }}
                 >
                   <Typography
                     variant="body2"
                     fontWeight="bold"
-                    sx={{ lineHeight: 1.2 }}
+                    sx={{
+                      lineHeight: 1.2,
+                      fontSize: 11,
+                      overflowWrap: "anywhere",
+                      wordBreak: "break-word",
+                    }}
                   >
                     {cardStudent.nom?.toUpperCase()}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    Né(e) le : {formatDate(cardStudent.date_naissance)}{" "}
+                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: 8.4, lineHeight: 1.2 }}>
+                    Né(e) le : {formatDate(cardStudent.date_naissance)}
                   </Typography>
-                  <Box sx={{ mt: 1 }}>
+                  <Box sx={{ mt: 0.25, display: "flex", flexDirection: "column", gap: 0.15, minWidth: 0 }}>
                     <Typography
                       variant="caption"
                       sx={{
                         display: "block",
                         fontWeight: "bold",
                         color: "primary.main",
-                        mb: 0.5,
+                        fontSize: 8.5,
+                        lineHeight: 1.2,
+                        overflowWrap: "anywhere",
+                        wordBreak: "break-word",
                       }}
                     >
                       MATRICULE : {cardStudent.matricule || "N/A"}
                     </Typography>
                     <Typography
                       variant="caption"
-                      sx={{ display: "block", lineHeight: 1.2 }}
+                      sx={{ display: "block", lineHeight: 1.2, fontSize: 8.4, overflowWrap: "anywhere", wordBreak: "break-word" }}
                     >
-                      Formation:{" "}
-                      {typeof cardStudent.filiere === "object"
+                      Formation: {typeof cardStudent.filiere === "object"
                         ? cardStudent.filiere?.intitule
-                        : filieres.find((f) => f.id === cardStudent.filiere)
-                            ?.intitule ||
+                        : filieres.find((f) => f.id === cardStudent.filiere)?.intitule ||
                           cardStudent.filiere ||
                           "-"}
                     </Typography>
                     <Typography
                       variant="caption"
-                      sx={{ display: "block", lineHeight: 1.2 }}
+                      sx={{ display: "block", lineHeight: 1.2, fontSize: 8.4, overflowWrap: "anywhere", wordBreak: "break-word" }}
                     >
-                      Niveau:{" "}
-                      {cardStudent.inscriptions &&
-                      cardStudent.inscriptions.length > 0
-                        ? cardStudent.inscriptions[0].niveau_nom
-                        : "-"}
+                      Niveau: {cardStudent.inscriptions && cardStudent.inscriptions.length > 0 ? cardStudent.inscriptions[0].niveau_nom : "-"}
                     </Typography>
                     <Typography
                       variant="caption"
-                      sx={{ display: "block", lineHeight: 1.2 }}
+                      sx={{ display: "block", lineHeight: 1.2, fontSize: 8.4, overflowWrap: "anywhere", wordBreak: "break-word" }}
                     >
-                      Année Ac.:{" "}
-                      {cardStudent.inscriptions &&
-                      cardStudent.inscriptions.length > 0
-                        ? cardStudent.inscriptions[0].annee_academique
-                        : "2025/2026"}
+                      Année Ac.: {cardStudent.inscriptions && cardStudent.inscriptions.length > 0 ? cardStudent.inscriptions[0].annee_academique : "2025/2026"}
                     </Typography>
                   </Box>
                 </Box>

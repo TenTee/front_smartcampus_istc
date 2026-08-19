@@ -220,7 +220,7 @@ export default function Dashboard() {
               </Grid>
               <Grid item xs={12} sm={6} md={4}>
                 <StatCard
-                  title="Formateurs Actifs"
+                  title="Enseignants Actifs"
                   value={kpis.formateurs}
                   icon={<PersonIcon fontSize="large" />}
                   color="#4CAF50"
