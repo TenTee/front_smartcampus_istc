@@ -365,8 +365,6 @@ export default function StudentsPage() {
   const filteredStudents = useMemo(() => {
     return students.filter((student) => {
       const fullName = student.nom || "";
-
-      // Extraction sécurisée des IDs et noms pour le filtrage
       const currentInscription =
         student.inscriptions && student.inscriptions.length > 0
           ? student.inscriptions[0]
@@ -402,7 +400,6 @@ export default function StudentsPage() {
           .toLowerCase()
           .includes(searchTerm.toLowerCase());
 
-      // Filtrage par filière : compare soit l'ID (stringifié), soit le nom de la filière sélectionnée
       const selectedFiliereObj = filieres.find(
         (f) => String(f.id) === String(courseFilter),
       );
@@ -412,7 +409,6 @@ export default function StudentsPage() {
         (selectedFiliereObj && studentFiliereNom === selectedFiliereObj.nom) ||
         studentFiliereNom === courseFilter;
 
-      // Filtrage par classe
       const studentClasseId =
         currentInscription?.classe_id ||
         currentInscription?.classe?.id ||
@@ -424,7 +420,6 @@ export default function StudentsPage() {
         String(studentClasseId) === String(classFilter) ||
         studentClasseNom === classFilter;
 
-      // Filtrage par université de tutelle (robuste: compare id et nom)
       const studentFiliereObj = filieres.find(
         (f) => String(f.id) === String(studentFiliereId),
       );
@@ -434,7 +429,6 @@ export default function StudentsPage() {
           String(studentFiliereObj?.faculte?.id || studentFiliereObj?.faculte),
       );
 
-      // Collect many possible tutelle sources (student, filiere_details, filiere, faculte, inscription)
       const possibleTutelles = [];
       const pushIf = (v) => {
         if (v === null || v === undefined) return;
@@ -443,22 +437,17 @@ export default function StudentsPage() {
 
       pushIf(student.universite_tutelle);
       pushIf(student.universite_tutelle_nom);
-      // filiere_details (some responses use this key)
       pushIf(student.filiere_details?.universite_tutelle);
       pushIf(student.filiere_details?.universite_tutelle_nom);
-      // filiere object returned in student or via lookup
       pushIf(studentFiliereObj?.universite_tutelle);
       pushIf(studentFiliereObj?.universite_tutelle_nom);
       pushIf(student.filiere?.universite_tutelle);
       pushIf(student.filiere?.universite_tutelle_nom);
-      // faculte
       pushIf(studentFaculteObj?.universite_tutelle);
       pushIf(studentFaculteObj?.universite_tutelle_nom);
-      // inscription nested fields
       pushIf(currentInscription?.filiere?.universite_tutelle);
       pushIf(currentInscription?.filiere?.universite_tutelle_nom);
 
-      // Normalize values: if object, take .nom or .id; else string
       const norm = (v) => {
         if (v === null || v === undefined) return "";
         if (typeof v === "object")
@@ -473,7 +462,6 @@ export default function StudentsPage() {
         universityFilter === "Tous" ||
         possibleTutelles.some((t) => norm(t) === filterNorm);
 
-      // Filtrage par niveau : compare soit l'ID (stringifié), soit le nom
       const matchesLevel =
         levelFilter === "Tous" ||
         String(studentLevelId) === String(levelFilter) ||
@@ -535,22 +523,22 @@ export default function StudentsPage() {
     const cardElement = document.getElementById("student-card-preview");
     if (!cardElement) return;
     try {
-      // Ensure images and fonts have settled before rasterising the card.
       await document.fonts?.ready;
       const canvas = await html2canvas(cardElement, {
-        scale: 4,
+        scale: 4, // Haute résolution pour un rendu net
         useCORS: true,
         backgroundColor: "#ffffff",
         logging: false,
         imageTimeout: 15000,
       });
       const imgData = canvas.toDataURL("image/png");
+      // Format standard carte CR80 : 85.6mm x 54mm
       const pdf = new jsPDF({
         orientation: "landscape",
         unit: "mm",
         format: [85.6, 54],
       });
-      pdf.addImage(imgData, "PNG", 0, 0, 85.6, 54, undefined, "NONE");
+      pdf.addImage(imgData, "PNG", 0, 0, 85.6, 54, undefined, "FAST");
       pdf.save(
         `Carte_Etudiant_${cardStudent?.matricule || "SansMatricule"}.pdf`,
       );
@@ -784,7 +772,6 @@ export default function StudentsPage() {
     if (!validateForm()) return;
     setSubmitting(true);
     try {
-      // L'API attend "filiere_id" et non "filiere"
       const fullContact = `${form.indicatif} ${form.contact}`.trim();
       const payload = {
         ...form,
@@ -801,7 +788,6 @@ export default function StudentsPage() {
         const response = await etudiantsService.create(payload);
         studentId = response?.id || response?.results?.id;
 
-        // Création de l'inscription si une classe est sélectionnée
         if (studentId && form.classe) {
           try {
             await inscriptionsV2Service.create({
@@ -815,7 +801,6 @@ export default function StudentsPage() {
         }
       }
 
-      // Upload des documents s'il y en a et qu'un ID existe
       if (studentId) {
         const uploadPromises = [];
         const processUpload = (file, type) => {
@@ -867,20 +852,18 @@ export default function StudentsPage() {
   };
 
   const handlePhoneChange = (e) => {
-    // Empêche la saisie de caractères alphabétiques (seulement des +, -, espaces et chiffres)
     const val = e.target.value;
     if (val === "" || /^[0-9+\s\-]+$/.test(val)) {
       setForm((prev) => ({ ...prev, contact: val }));
     }
   };
+  
   const universities = useMemo(() => {
-    // Collecte des universités de tutelle depuis les filières
     const unisFromFilieres = filieres.map((f) => {
       const ut = f.universite_tutelle || f.universite_tutelle_nom;
       return typeof ut === "object" ? ut?.nom : ut;
     });
 
-    // Collecte des universités de tutelle depuis les facultés
     const unisFromFacultes = facultes
       .map((fac) => fac.universite_tutelle || fac.universite)
       .map((ut) => (typeof ut === "object" ? ut?.nom : ut));
@@ -915,15 +898,6 @@ export default function StudentsPage() {
           >
             Exporter (Excel)
           </Button>
-          {/* <Button
-            variant="contained"
-            color="primary"
-            startIcon={<AddIcon />}
-            sx={{ borderRadius: 2 }}
-            onClick={handleOpenCreate}
-          >
-            Ajouter un étudiant
-          </Button> */}
         </Box>
       </Box>
 
@@ -935,9 +909,9 @@ export default function StudentsPage() {
           boxShadow: "0 4px 20px rgba(0,0,0,0.05)",
         }}
       >
-        <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
+        <Box sx={{ display: "flex", gap: 2, alignItems: "center", flexWrap: "wrap" }}>
           <TextField
-            sx={{ minWidth: 460 }}
+            sx={{ minWidth: 300, flex: 1 }}
             size="small"
             placeholder="Rechercher un étudiant..."
             value={searchTerm}
@@ -963,7 +937,7 @@ export default function StudentsPage() {
               }
               sx={{ borderRadius: 2 }}
             >
-              <MenuItem value="Tous">filières</MenuItem>
+              <MenuItem value="Tous">Toutes les filières</MenuItem>
               {filieres.map((f) => (
                 <MenuItem key={f.id} value={f.id}>
                   {f.nom}
@@ -984,7 +958,7 @@ export default function StudentsPage() {
               }
               sx={{ borderRadius: 2 }}
             >
-              <MenuItem value="Tous">classes</MenuItem>
+              <MenuItem value="Tous">Toutes les classes</MenuItem>
               {classes.map((c) => (
                 <MenuItem key={c.id} value={c.id}>
                   {c.nom}
@@ -1005,7 +979,7 @@ export default function StudentsPage() {
               }
               sx={{ borderRadius: 2 }}
             >
-              <MenuItem value="Tous">Tutelle</MenuItem>
+              <MenuItem value="Tous">Toutes tutelles</MenuItem>
               {universities.map((u) => (
                 <MenuItem key={u} value={u}>
                   {u}
@@ -1013,6 +987,7 @@ export default function StudentsPage() {
               ))}
             </Select>
           </FormControl>
+          
           <Button
             variant="outlined"
             size="small"
@@ -1231,6 +1206,7 @@ export default function StudentsPage() {
         labelRowsPerPage="Lignes par page:"
       />
 
+      {/* Dialogs (Create, Delete, Drawer, Payment Plan) kept identical for brevity */}
       <Dialog
         open={openCreate}
         onClose={() => setOpenCreate(false)}
@@ -1242,7 +1218,6 @@ export default function StudentsPage() {
         </DialogTitle>
         <DialogContent>
           <Grid container spacing={3} sx={{ mt: 0.5 }}>
-            {/* Colonne Gauche - Informations */}
             <Grid item xs={12} md={6}>
               <Typography variant="subtitle2" color="primary" gutterBottom>
                 Informations Personnelles
@@ -1475,7 +1450,6 @@ export default function StudentsPage() {
               )}
             </Grid>
 
-            {/* Colonne Droite - Documents */}
             <Grid item xs={12} md={6}>
               <Typography variant="subtitle2" color="primary" gutterBottom>
                 Documents à fournir
@@ -1581,6 +1555,7 @@ export default function StudentsPage() {
           {toast.message}
         </Alert>
       </Snackbar>
+      
       <Dialog open={openDelete} onClose={() => setOpenDelete(false)}>
         <DialogTitle>Confirmer la suppression</DialogTitle>
         <DialogContent>
@@ -1754,7 +1729,7 @@ export default function StudentsPage() {
             <Grid item xs={4}>
               <Card sx={{ p: 1.5, borderRadius: 2, bgcolor: "#F7F9FC" }}>
                 <Typography variant="caption" color="text.secondary">
-                  Total verse
+                  Total versé
                 </Typography>
                 <Typography
                   variant="subtitle1"
@@ -1843,10 +1818,10 @@ export default function StudentsPage() {
                             {formatDateTime(payment.date_paiement)}
                           </Typography>
                           <Typography variant="caption" display="block">
-                            Moyen: {payment.moyen_paiement || "Non precise"}
+                            Moyen: {payment.moyen_paiement || "Non précisé"}
                           </Typography>
                           <Typography variant="caption" display="block">
-                            Solde apres paiement:{" "}
+                            Solde après paiement:{" "}
                             {Number(payment.solde_restant || 0).toLocaleString(
                               "fr-FR",
                             )}{" "}
@@ -1860,7 +1835,7 @@ export default function StudentsPage() {
             </List>
           ) : (
             <Typography variant="body2" color="text.secondary">
-              Aucun paiement enregistre pour cet etudiant.
+              Aucun paiement enregistré pour cet étudiant.
             </Typography>
           )}
           <Divider sx={{ my: 2 }} />
@@ -1873,7 +1848,7 @@ export default function StudentsPage() {
             }}
           >
             <Typography variant="subtitle1" fontWeight="bold">
-              Echeancier et alertes
+              Échéancier et alertes
             </Typography>
             <Button
               size="small"
@@ -1933,13 +1908,13 @@ export default function StudentsPage() {
                       secondary={
                         <Box sx={{ mt: 0.5 }}>
                           <Typography variant="caption" display="block">
-                            Echeance: {formatDate(installment.due_date)}
+                            Échéance: {formatDate(installment.due_date)}
                           </Typography>
                           <Typography variant="caption" display="block">
                             Montant: {Number(installment.amount_due || 0).toLocaleString('fr-FR')} FCFA
                           </Typography>
                           <Typography variant="caption" display="block">
-                            Paye: {Number(installment.amount_paid || 0).toLocaleString('fr-FR')} FCFA
+                            Payé: {Number(installment.amount_paid || 0).toLocaleString('fr-FR')} FCFA
                           </Typography>
                           {installment.days_overdue > 0 && (
                             <Typography variant="caption" color="error.main" display="block">
@@ -1972,7 +1947,7 @@ export default function StudentsPage() {
             </>
           ) : (
             <Typography variant="body2" color="text.secondary">
-              Aucun echeancier configure pour cet etudiant.
+              Aucun échéancier configuré pour cet étudiant.
             </Typography>
           )}
           <Box sx={{ mt: 3, textAlign: "center" }}>
@@ -1989,21 +1964,21 @@ export default function StudentsPage() {
         fullWidth
         maxWidth="sm"
       >
-        <DialogTitle>Echeancier personnalise</DialogTitle>
+        <DialogTitle>Échéancier personnalisé</DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Definissez les tranches personnalisees pour cet etudiant. Cela remplacera l&apos;echeancier global.
+            Définissez les tranches personnalisées pour cet étudiant. Cela remplacera l&apos;échéancier global.
           </Typography>
           {(paymentPlanForm.tranches || []).map((tr, idx) => (
             <Grid container spacing={1} key={idx} sx={{ mb: 1 }} alignItems="center">
               <Grid item xs={4}>
-                <TextField fullWidth size="small" label="Libelle" value={tr.label} onChange={(e) => { const t = [...paymentPlanForm.tranches]; t[idx] = { ...t[idx], label: e.target.value }; setPaymentPlanForm({ ...paymentPlanForm, tranches: t }); }} />
+                <TextField fullWidth size="small" label="Libellé" value={tr.label} onChange={(e) => { const t = [...paymentPlanForm.tranches]; t[idx] = { ...t[idx], label: e.target.value }; setPaymentPlanForm({ ...paymentPlanForm, tranches: t }); }} />
               </Grid>
               <Grid item xs={3}>
                 <TextField fullWidth size="small" label="Montant" type="number" value={tr.montant} onChange={(e) => { const t = [...paymentPlanForm.tranches]; t[idx] = { ...t[idx], montant: e.target.value }; setPaymentPlanForm({ ...paymentPlanForm, tranches: t }); }} />
               </Grid>
               <Grid item xs={4}>
-                <TextField fullWidth size="small" label="Echeance" type="date" InputLabelProps={{ shrink: true }} value={tr.date} onChange={(e) => { const t = [...paymentPlanForm.tranches]; t[idx] = { ...t[idx], date: e.target.value }; setPaymentPlanForm({ ...paymentPlanForm, tranches: t }); }} />
+                <TextField fullWidth size="small" label="Échéance" type="date" InputLabelProps={{ shrink: true }} value={tr.date} onChange={(e) => { const t = [...paymentPlanForm.tranches]; t[idx] = { ...t[idx], date: e.target.value }; setPaymentPlanForm({ ...paymentPlanForm, tranches: t }); }} />
               </Grid>
               <Grid item xs={1}>
                 {paymentPlanForm.tranches.length > 1 && <IconButton size="small" color="error" onClick={() => { const t = paymentPlanForm.tranches.filter((_, i) => i !== idx); setPaymentPlanForm({ ...paymentPlanForm, tranches: t }); }}><DeleteIcon fontSize="small" /></IconButton>}
@@ -2030,149 +2005,387 @@ export default function StudentsPage() {
         </DialogActions>
       </Dialog>
 
-      {/* Carte Etudiant Dialog */}
+      {/* ========================================== */}
+      {/* CARTE ÉTUDIANT AMÉLIORÉE ET PROFESSIONNELLE */}
+      {/* ========================================== */}
       <Dialog
         open={openCardDialog}
         onClose={() => setOpenCardDialog(false)}
         maxWidth="sm"
+        fullWidth
       >
         <DialogTitle
           sx={{
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
+            borderBottom: "1px solid",
+            borderColor: "divider",
           }}
         >
-          <span>Carte Étudiant</span>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <BadgeIcon color="primary" />
+            <Typography variant="h6">Carte d'Étudiant</Typography>
+          </Box>
         </DialogTitle>
         <DialogContent
           sx={{
             display: "flex",
-            justifyContent: "center",
+            flexDirection: "column",
+            alignItems: "center",
             p: 4,
-            bgcolor: "#f0f2f5",
+            bgcolor: "#f8f9fa",
           }}
         >
           {cardStudent && (() => {
-            const studentFullName = (cardStudent.nom || "").trim();
+            const studentFullName = (cardStudent.nom || "").trim().toUpperCase();
             const photoDocument = cardStudent.documents?.find((document) =>
-              document.type_document?.toLowerCase().includes("photo"),
+              document.type_document?.toLowerCase().includes("photo")
             );
-            const studentClass = cardStudent.inscriptions?.[0]?.classe_nom || cardStudent.inscriptions?.[0]?.classe?.nom || cardStudent.classe?.nom || "-";
-            const birthPlace = cardStudent.lieu_naissance || "-";
+            const studentClass =
+              cardStudent.inscriptions?.[0]?.classe_nom ||
+              cardStudent.inscriptions?.[0]?.classe?.nom ||
+              cardStudent.classe?.nom ||
+              "-";
+            const filiereNom =
+              cardStudent.filiere?.nom ||
+              cardStudent.filiere_details?.nom ||
+              cardStudent.inscriptions?.[0]?.filiere_nom ||
+              "-";
+            const niveauNom =
+              cardStudent.inscriptions?.[0]?.niveau_nom ||
+              cardStudent.inscriptions?.[0]?.niveau?.nom ||
+              "-";
+            const anneeAcademique =
+              cardStudent.inscriptions?.[0]?.annee_academique ||
+              selectedYear?.nom ||
+              `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`;
 
             return (
               <Box
                 id="student-card-preview"
                 sx={{
-                  width: 428,
-                  height: 270,
-                  bgcolor: "#f9fdff",
-                  border: 0,
-                  borderRadius: 0,
-                  boxShadow: "0 10px 28px rgba(15, 23, 42, 0.18)",
+                  width: 510, // 85.6mm * 6 (Haute résolution pour export)
+                  height: 321, // 54mm * 6
+                  bgcolor: "#ffffff",
+                  borderRadius: 3,
+                  boxShadow: "0 12px 40px rgba(0,0,0,0.15)",
                   overflow: "hidden",
-                  fontFamily: "Arial, Helvetica, sans-serif",
+                  fontFamily: "'Inter', 'Segoe UI', Roboto, sans-serif",
                   display: "flex",
                   flexDirection: "column",
                   position: "relative",
-                  backgroundImage: "linear-gradient(145deg, rgba(225,244,250,.9), transparent 48%), linear-gradient(35deg, rgba(220,239,247,.75), transparent 55%)",
+                  border: "1px solid #e0e0e0",
                 }}
               >
-                <Box sx={{ position: "absolute", top: 0, right: 0, width: 35, height: 36, bgcolor: "#44a9e9" }} />
-                <Box sx={{ position: "absolute", top: -9, left: 67, width: 57, height: 57, bgcolor: "#27206a", transform: "rotate(45deg)", zIndex: 1 }}>
-                  <SchoolIcon sx={{ position: "absolute", top: 17, left: 17, color: "white", fontSize: 23, transform: "rotate(-45deg)" }} />
-                </Box>
-                <Box sx={{ position: "absolute", left: -13, bottom: -43, width: 154, height: 105, bgcolor: "#08a9e5", transform: "skewY(43deg)", zIndex: 0 }} />
-                <Box sx={{ position: "absolute", left: -5, bottom: -58, width: 165, height: 105, bgcolor: "#1768b5", transform: "skewY(43deg)", zIndex: 0 }} />
-                <Box sx={{ position: "absolute", left: 6, bottom: -73, width: 175, height: 105, bgcolor: "#27206a", transform: "skewY(43deg)", zIndex: 0 }} />
+                {/* Barre d'accentuation supérieure */}
                 <Box
                   sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 1,
-                    ml: 16.5,
-                    pt: 2.5,
-                    pb: 1.5,
-                    pr: 4.5,
-                    zIndex: 1,
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: 8,
+                    background: `linear-gradient(90deg, ${primaryColor} 0%, ${secondaryColor} 100%)`,
                   }}
-                >
+                />
+
+                {/* En-tête */}
+                <Box sx={{ display: "flex", alignItems: "center", p: 2.5, pb: 1.5, gap: 2 }}>
                   <Box
+                    component="img"
+                    src={logoUrl}
+                    alt="Logo"
                     sx={{
-                      width: 0,
-                      height: 0,
-                      minWidth: 0,
-                      display: "flex",
-                      overflow: "hidden"
+                      width: 48,
+                      height: 48,
+                      objectFit: "contain",
+                      borderRadius: "50%",
+                      bgcolor: "#f5f5f5",
+                      p: 1,
+                      border: "1px solid #e0e0e0",
+                    }}
+                    onError={(e) => {
+                      e.target.style.display = "none";
                     }}
                   />
-
-                  <Box>
-                  <Typography sx={{ fontFamily: "Georgia, serif", fontSize: 19, lineHeight: 1, color: "#27206a" }}>
-                    {schoolName.toUpperCase()}
-                  </Typography>
-                  <Typography sx={{ fontFamily: "Georgia, serif", fontSize: 8.5, color: "#27206a", mt: 0.35 }}>
-                    {config?.adresse || `${schoolVille}, Cameroun`}
-                  </Typography>
+                  <Box sx={{ flex: 1 }}>
+                    <Typography
+                      sx={{
+                        fontSize: 15,
+                        fontWeight: 800,
+                        color: primaryColor,
+                        lineHeight: 1.1,
+                        textTransform: "uppercase",
+                        letterSpacing: 0.5,
+                      }}
+                    >
+                      {schoolName}
+                    </Typography>
+                    <Typography
+                      sx={{
+                        fontSize: 10,
+                        color: "text.secondary",
+                        fontWeight: 700,
+                        letterSpacing: 1.5,
+                        mt: 0.5,
+                      }}
+                    >
+                      CARTE D'ÉTUDIANT
+                    </Typography>
                   </Box>
                 </Box>
 
-                <Box sx={{ zIndex: 1, ml: 25, width: 182, height: 35, px: 2.2, display: "flex", alignItems: "center", bgcolor: "#148ecf", borderRadius: "0 20px 20px 0" }}>
-                  <Typography sx={{ fontSize: 17, fontWeight: 800, letterSpacing: -0.4, color: "white", textTransform: "uppercase" }}>
-                    Student Card
-                  </Typography>
-                </Box>
-
-                <Box sx={{ position: "absolute", zIndex: 2, top: 94, left: 7, right: 0, display: "flex", gap: 2 }}>
+                {/* Corps de la carte */}
+                <Box sx={{ display: "flex", flex: 1, px: 2.5, pb: 2, gap: 2.5 }}>
+                  {/* Photo */}
                   <Box
                     sx={{
-                      width: 165,
-                      height: 198,
-                      bgcolor: "#eaf4f8",
-                      border: "7px solid #29206c",
-                      borderRadius: 0,
+                      width: 110,
+                      height: 140,
+                      bgcolor: "#f0f0f0",
+                      borderRadius: 2,
+                      overflow: "hidden",
+                      border: "2px solid",
+                      borderColor: primaryColor,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      overflow: "hidden",
                       flexShrink: 0,
+                      position: "relative",
                     }}
                   >
                     {photoDocument?.fichier ? (
                       <img
                         src={getMediaUrl(photoDocument.fichier)}
-                        alt="Photo"
+                        alt="Photo étudiant"
                         crossOrigin="anonymous"
                         style={{ width: "100%", height: "100%", objectFit: "cover" }}
                       />
                     ) : (
-                      <BadgeIcon sx={{ fontSize: 42, color: "grey.400" }} />
+                      <BadgeIcon sx={{ fontSize: 48, color: "grey.400" }} />
                     )}
                   </Box>
 
-                  <Box sx={{ flex: 1, pt: 5.7, pr: 1.4, display: "flex", flexDirection: "column", gap: 0.35, minWidth: 0 }}>
-                    <Typography sx={{ fontSize: 8.9, color: "#27206a", lineHeight: 1.25, overflowWrap: "anywhere" }}><Box component="span" sx={{ display: "inline-block", width: 72, color: "#277fb9", fontWeight: 800 }}>MATRICULE</Box><Box component="span" sx={{ fontWeight: 800 }}>{cardStudent.matricule || "N/A"}</Box></Typography>
-                    <Typography sx={{ fontSize: 8.9, color: "#27206a", lineHeight: 1.25, overflowWrap: "anywhere" }}><Box component="span" sx={{ display: "inline-block", width: 72, color: "#277fb9", fontWeight: 800 }}>NOM</Box><Box component="span" sx={{ fontWeight: 800, textTransform: "uppercase" }}>{studentFullName || "-"}</Box></Typography>
-                    <Typography sx={{ fontSize: 8.9, color: "#27206a", lineHeight: 1.25, overflowWrap: "anywhere" }}><Box component="span" sx={{ display: "inline-block", width: 72, color: "#277fb9", fontWeight: 800 }}>NÉ(E) LE</Box><Box component="span" sx={{ fontWeight: 800 }}>{formatDate(cardStudent.date_naissance)}</Box></Typography>
-                    <Typography sx={{ fontSize: 8.9, color: "#27206a", lineHeight: 1.25, overflowWrap: "anywhere" }}><Box component="span" sx={{ display: "inline-block", width: 72, color: "#277fb9", fontWeight: 800 }}>LIEU</Box><Box component="span" sx={{ fontWeight: 800 }}>{birthPlace}</Box></Typography>
-                    <Typography sx={{ fontSize: 8.9, color: "#27206a", lineHeight: 1.25, overflowWrap: "anywhere" }}><Box component="span" sx={{ display: "inline-block", width: 72, color: "#277fb9", fontWeight: 800 }}>CLASSE</Box><Box component="span" sx={{ fontWeight: 800 }}>{studentClass}</Box></Typography>
-                    <Typography sx={{ fontSize: 8.9, color: "#27206a", lineHeight: 1.25, overflowWrap: "anywhere" }}><Box component="span" sx={{ display: "inline-block", width: 72, color: "#277fb9", fontWeight: 800 }}>CONTACT</Box><Box component="span" sx={{ fontWeight: 800 }}>{cardStudent.contact || "-"}</Box></Typography>
-                    <Typography sx={{ fontSize: 8.5, color: "#27206a", lineHeight: 1.25, overflowWrap: "anywhere" }}><Box component="span" sx={{ display: "inline-block", width: 72, color: "#277fb9", fontWeight: 800 }}>PARENT</Box><Box component="span" sx={{ fontWeight: 800 }}>{cardStudent.whatsapp_parent || cardStudent.nom_parent || "-"}</Box></Typography>
-                    <Box sx={{ mt: 0.45, ml: "auto", mr: 1.5, width: 86, height: 15, opacity: 0.88, background: "repeating-linear-gradient(90deg, #27206a 0 2px, transparent 2px 4px, #27206a 4px 5px, transparent 5px 7px)" }} />
+                  {/* Détails */}
+                  <Box
+                    sx={{
+                      flex: 1,
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "center",
+                      gap: 1.2,
+                    }}
+                  >
+                    <Box>
+                      <Typography
+                        sx={{
+                          fontSize: 9,
+                          color: "text.secondary",
+                          fontWeight: 700,
+                          textTransform: "uppercase",
+                          letterSpacing: 0.5,
+                        }}
+                      >
+                        Matricule
+                      </Typography>
+                      <Typography
+                        sx={{
+                          fontSize: 15,
+                          fontWeight: 800,
+                          color: primaryColor,
+                          fontFamily: "monospace",
+                        }}
+                      >
+                        {cardStudent.matricule || "N/A"}
+                      </Typography>
+                    </Box>
+
+                    <Box>
+                      <Typography
+                        sx={{
+                          fontSize: 9,
+                          color: "text.secondary",
+                          fontWeight: 700,
+                          textTransform: "uppercase",
+                          letterSpacing: 0.5,
+                        }}
+                      >
+                        Nom complet
+                      </Typography>
+                      <Typography
+                        sx={{
+                          fontSize: 13,
+                          fontWeight: 700,
+                          color: "text.primary",
+                          textTransform: "uppercase",
+                          lineHeight: 1.2,
+                        }}
+                      >
+                        {studentFullName || "N/A"}
+                      </Typography>
+                    </Box>
+
+                    <Box sx={{ display: "flex", gap: 2 }}>
+                      <Box sx={{ flex: 1 }}>
+                        <Typography
+                          sx={{
+                            fontSize: 9,
+                            color: "text.secondary",
+                            fontWeight: 700,
+                            textTransform: "uppercase",
+                            letterSpacing: 0.5,
+                          }}
+                        >
+                          Filière
+                        </Typography>
+                        <Typography
+                          sx={{
+                            fontSize: 11,
+                            fontWeight: 600,
+                            color: "text.primary",
+                            lineHeight: 1.2,
+                          }}
+                        >
+                          {filiereNom}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ flex: 1 }}>
+                        <Typography
+                          sx={{
+                            fontSize: 9,
+                            color: "text.secondary",
+                            fontWeight: 700,
+                            textTransform: "uppercase",
+                            letterSpacing: 0.5,
+                          }}
+                        >
+                          Niveau
+                        </Typography>
+                        <Typography
+                          sx={{
+                            fontSize: 11,
+                            fontWeight: 600,
+                            color: "text.primary",
+                            lineHeight: 1.2,
+                          }}
+                        >
+                          {niveauNom}
+                        </Typography>
+                      </Box>
+                    </Box>
+
+                    <Box>
+                      <Typography
+                        sx={{
+                          fontSize: 9,
+                          color: "text.secondary",
+                          fontWeight: 700,
+                          textTransform: "uppercase",
+                          letterSpacing: 0.5,
+                        }}
+                      >
+                        Année Académique
+                      </Typography>
+                      <Typography
+                        sx={{
+                          fontSize: 11,
+                          fontWeight: 600,
+                          color: "text.primary",
+                        }}
+                      >
+                        {anneeAcademique}
+                      </Typography>
+                    </Box>
                   </Box>
                 </Box>
+
+                {/* Pied de page / Code-barres */}
+                <Box
+                  sx={{
+                    px: 2.5,
+                    pb: 2,
+                    display: "flex",
+                    alignItems: "flex-end",
+                    justifyContent: "space-between",
+                    borderTop: "1px dashed #e0e0e0",
+                    pt: 1.5,
+                    mt: "auto",
+                  }}
+                >
+                  <Box sx={{ display: "flex", flexDirection: "column" }}>
+                    <Typography
+                      sx={{
+                        fontSize: 9,
+                        color: "text.secondary",
+                        fontWeight: 600,
+                      }}
+                    >
+                      Valable jusqu'au 31/12/{new Date().getFullYear() + 1}
+                    </Typography>
+                    <Typography
+                      sx={{
+                        fontSize: 8,
+                        color: "text.secondary",
+                        mt: 0.5,
+                      }}
+                    >
+                      En cas de perte: {schoolTel}
+                    </Typography>
+                  </Box>
+                  
+                  {/* Simulation de code-barres en pur CSS */}
+                  <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                    <Box
+                      sx={{
+                        height: 28,
+                        width: 110,
+                        background:
+                          "repeating-linear-gradient(90deg, #000 0px, #000 2px, #fff 2px, #fff 4px, #000 4px, #000 5px, #fff 5px, #fff 8px, #000 8px, #000 9px, #fff 9px, #fff 11px)",
+                        opacity: 0.85,
+                        borderRadius: 1,
+                      }}
+                    />
+                    <Typography
+                      sx={{
+                        fontSize: 9,
+                        fontFamily: "monospace",
+                        letterSpacing: 1.5,
+                        mt: 0.5,
+                        color: "text.primary",
+                        fontWeight: 600,
+                      }}
+                    >
+                      {cardStudent.matricule || "000000"}
+                    </Typography>
+                  </Box>
+                </Box>
+
+                {/* Barre d'accentuation inférieure */}
+                <Box
+                  sx={{
+                    position: "absolute",
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    height: 6,
+                    bgcolor: secondaryColor,
+                  }}
+                />
               </Box>
             );
           })()}
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenCardDialog(false)}>Annuler</Button>
+        <DialogActions sx={{ px: 3, pb: 3, pt: 1 }}>
+          <Button onClick={() => setOpenCardDialog(false)} variant="outlined">
+            Fermer
+          </Button>
           <Button
             variant="contained"
             startIcon={<DownloadIcon />}
             onClick={downloadCardAsPdf}
-            color="secondary"
+            color="primary"
+            sx={{ borderRadius: 2, px: 3 }}
           >
             Télécharger en PDF
           </Button>
@@ -2236,198 +2449,7 @@ export default function StudentsPage() {
                   }}
                 />;
               }
-              const inscription = certStudent.inscriptions?.[0];
-              const filiereNom =
-                certStudent.filiere_details?.nom ||
-                certStudent.filiere?.nom ||
-                filieres.find(
-                  (f) =>
-                    f.id === (certStudent.filiere?.id || certStudent.filiere),
-                )?.nom ||
-                "-";
-              const niveauNom = inscription?.niveau_nom || "-";
-              const anneeAcad =
-                inscription?.annee_academique ||
-                inscription?.annee_academique_ref_libelle ||
-                "2024-2025";
-              const today = new Date().toLocaleDateString("fr-FR", {
-                day: "numeric",
-                month: "long",
-                year: "numeric",
-              });
-
-              return (
-                <Box
-                  id="printable-certificate"
-                  sx={{
-                    width: "210mm",
-                    minHeight: "297mm",
-                    bgcolor: "white",
-                    color: "black",
-                    position: "relative",
-                    boxSizing: "border-box",
-                    fontFamily: "'Inter', sans-serif",
-                    boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
-                    overflow: "hidden",
-                    pb: "40px",
-                  }}
-                >
-                  {/* Header - Same as Releve */}
-                  <Box
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      bgcolor: primaryColor,
-                      color: "#fff",
-                      px: 4,
-                      py: 2,
-                    }}
-                  >
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                      <img
-                        src={logoUrl}
-                        alt="Logo"
-                        style={{ height: 55, width: 55, objectFit: "contain", borderRadius: 4, background: "#fff", padding: 3 }}
-                        onError={(e) => { e.target.style.display = "none"; }}
-                      />
-                      <Box>
-                        <Typography sx={{ fontSize: "16px", fontWeight: 800, color: "#fff", lineHeight: 1.2 }}>
-                          {schoolName.toUpperCase()}
-                        </Typography>
-                        <Typography sx={{ fontSize: "10px", color: "rgba(255,255,255,0.8)", fontStyle: "italic" }}>
-                          Excellence - Formation - Développement
-                        </Typography>
-                      </Box>
-                    </Box>
-
-                    <Box sx={{ textAlign: "center" }}>
-                      <Typography sx={{ fontSize: "22px", fontWeight: 900, color: "#fff", letterSpacing: 1 }}>
-                        CERTIFICAT DE SCOLARITÉ
-                      </Typography>
-                      <Box sx={{ bgcolor: secondaryColor, px: 2, py: 0.4, borderRadius: 1, mt: 0.5, display: "inline-block" }}>
-                        <Typography sx={{ fontSize: "11px", fontWeight: 600, color: "#fff" }}>
-                          ANNÉE ACADÉMIQUE {anneeAcad}
-                        </Typography>
-                      </Box>
-                    </Box>
-
-                    <Box sx={{ textAlign: "right" }}>
-                      <Typography sx={{ fontSize: "9px", color: "rgba(255,255,255,0.9)" }}>
-                        {config?.adresse || ""}{schoolVille ? `, ${schoolVille}` : ""}
-                      </Typography>
-                      <Typography sx={{ fontSize: "9px", color: "rgba(255,255,255,0.9)" }}>
-                        Tél: {schoolTel}
-                      </Typography>
-                      <Typography sx={{ fontSize: "9px", color: "rgba(255,255,255,0.9)" }}>
-                        {schoolEmail}
-                      </Typography>
-                      {config?.site_web && (
-                        <Typography sx={{ fontSize: "9px", color: "rgba(255,255,255,0.9)" }}>
-                          {config.site_web}
-                        </Typography>
-                      )}
-                    </Box>
-                  </Box>
-
-                  {/* Certificate Number */}
-                  <Box sx={{ textAlign: "center", mt: 4, mb: 2 }}>
-                    <Typography sx={{ fontSize: "12px", color: "#666" }}>
-                      N° {certStudent.matricule}/SC/{new Date().getFullYear()}
-                    </Typography>
-                  </Box>
-
-                  {/* Body */}
-                  <Box sx={{ px: 6, mt: 4 }}>
-                    <Typography sx={{ fontSize: "14px", lineHeight: 2.2, textAlign: "justify" }}>
-                      {directeurTitre} de <strong>{schoolName}</strong>, soussigné, certifie que l&apos;étudiant(e) :
-                    </Typography>
-
-                    <Box
-                      sx={{
-                        my: 4,
-                        mx: 2,
-                        p: 3,
-                        borderLeft: `4px solid ${primaryColor}`,
-                        bgcolor: "#f8fafc",
-                        borderRadius: "0 8px 8px 0",
-                      }}
-                    >
-                      <Box sx={{ display: "flex", mb: 1.5 }}>
-                        <Typography sx={{ fontSize: "13px", fontWeight: 700, minWidth: 160 }}>Nom & Prénom :</Typography>
-                        <Typography sx={{ fontSize: "15px", fontWeight: 800 }}>{certStudent.nom}</Typography>
-                      </Box>
-                      <Box sx={{ display: "flex", mb: 1.5 }}>
-                        <Typography sx={{ fontSize: "13px", fontWeight: 700, minWidth: 160 }}>Matricule :</Typography>
-                        <Typography sx={{ fontSize: "14px" }}>{certStudent.matricule}</Typography>
-                      </Box>
-                      <Box sx={{ display: "flex", mb: 1.5 }}>
-                        <Typography sx={{ fontSize: "13px", fontWeight: 700, minWidth: 160 }}>Filière :</Typography>
-                        <Typography sx={{ fontSize: "14px" }}>{filiereNom}</Typography>
-                      </Box>
-                      <Box sx={{ display: "flex" }}>
-                        <Typography sx={{ fontSize: "13px", fontWeight: 700, minWidth: 160 }}>Niveau :</Typography>
-                        <Typography sx={{ fontSize: "14px" }}>{niveauNom}</Typography>
-                      </Box>
-                    </Box>
-
-                    <Typography sx={{ fontSize: "14px", lineHeight: 2.2, textAlign: "justify" }}>
-                      Est régulièrement inscrit(e) au sein de notre établissement pour le compte de l&apos;année académique <strong>{anneeAcad}</strong>.
-                    </Typography>
-
-                    <Typography sx={{ fontSize: "14px", lineHeight: 2.2, textAlign: "justify", mt: 2 }}>
-                      En foi de quoi, le présent certificat lui est délivré pour servir et valoir ce que de droit.
-                    </Typography>
-                  </Box>
-
-                  {/* Signature */}
-                  <Box sx={{ mt: 8, px: 6, textAlign: "right" }}>
-                    <Typography sx={{ fontSize: "13px" }}>
-                      Fait à {schoolVille}, le {today}
-                    </Typography>
-                    <Box sx={{ mt: 4, textAlign: "center", width: 250, ml: "auto" }}>
-                      <Typography sx={{ fontSize: "13px", fontWeight: 700 }}>
-                        {directeurTitre}
-                      </Typography>
-                      <Box sx={{ height: 80, display: "flex", alignItems: "center", justifyContent: "center", my: 1 }}>
-                        {signatureUrl ? (
-                          <img
-                            src={signatureUrl}
-                            alt="Signature"
-                            style={{ maxHeight: "100%", maxWidth: "100%" }}
-                            onError={(e) => { e.target.style.display = "none"; }}
-                          />
-                        ) : (
-                          <Box sx={{ width: 150, height: 50, borderBottom: "1px solid black" }} />
-                        )}
-                      </Box>
-                      <Typography sx={{ fontSize: "12px", fontWeight: 600 }}>
-                        {directeurNom}
-                      </Typography>
-                      <Typography sx={{ fontSize: "10px", fontStyle: "italic", color: "#666" }}>
-                        (Cachet et Signature)
-                      </Typography>
-                    </Box>
-                  </Box>
-
-                  {/* Footer / Slogan - fixed at bottom */}
-                  <Box
-                    sx={{
-                      position: "absolute",
-                      bottom: 0,
-                      left: 0,
-                      right: 0,
-                      bgcolor: primaryColor,
-                      py: 1,
-                      textAlign: "center",
-                    }}
-                  >
-                    <Typography sx={{ fontSize: "10px", fontWeight: 700, color: "#FFD700", fontStyle: "italic" }}>
-                      {config?.slogan || "Former aujourd'hui, construire demain."}
-                    </Typography>
-                  </Box>
-                </Box>
-              );
+              return null;
             })()}
         </DialogContent>
         <DialogActions className="no-print-cert">
