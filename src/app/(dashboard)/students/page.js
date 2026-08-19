@@ -2049,150 +2049,159 @@ export default function StudentsPage() {
             bgcolor: "#f0f2f5",
           }}
         >
-          {cardStudent && (
-            <Box
-              id="student-card-preview"
-              sx={{
-                width: 340,
-                height: 214,
-                bgcolor: "white",
-                borderRadius: 2,
-                boxShadow: 3,
-                position: "relative",
-                overflow: "hidden",
-                display: "flex",
-                flexDirection: "column",
-                fontFamily: "sans-serif",
-              }}
-            >
-              {/* Header */}
+          {cardStudent && (() => {
+            const studentFullName = (cardStudent.nom || "").trim();
+            const studentNameParts = studentFullName ? studentFullName.split(/\s+/) : [];
+            const studentNom = studentNameParts[0] || "-";
+            const studentPrenom = studentNameParts.slice(1).join(" ") || "-";
+            const studentFiliere = typeof cardStudent.filiere === "object"
+              ? cardStudent.filiere?.intitule
+              : filieres.find((f) => f.id === cardStudent.filiere)?.intitule || cardStudent.filiere || "-";
+            const studentNiveau = cardStudent.inscriptions && cardStudent.inscriptions.length > 0
+              ? cardStudent.inscriptions[0].niveau_nom
+              : "-";
+            const studentAnnee = cardStudent.inscriptions && cardStudent.inscriptions.length > 0
+              ? cardStudent.inscriptions[0].annee_academique
+              : "2025/2026";
+
+            return (
               <Box
+                id="student-card-preview"
                 sx={{
-                  bgcolor: primaryColor,
-                  color: "white",
-                  py: 0.75,
-                  px: 1.5,
-                  textAlign: "center",
+                  width: 380,
+                  height: 240,
+                  bgcolor: "white",
+                  border: "1px solid #dfe5ef",
+                  borderRadius: 2,
+                  boxShadow: 3,
+                  overflow: "hidden",
+                  fontFamily: "sans-serif",
+                  display: "flex",
+                  flexDirection: "column",
                 }}
               >
-                <Typography variant="subtitle2" fontWeight="bold" sx={{ fontSize: 11, lineHeight: 1.2 }}>
-                  {schoolName.toUpperCase()}
-                </Typography>
-                <Typography variant="caption" sx={{ letterSpacing: 1, fontSize: 8.5, lineHeight: 1.2 }}>
-                  CARTE D&apos;ÉTUDIANT
-                </Typography>
-              </Box>
-
-              {/* Body */}
-              <Box sx={{ p: 1.25, display: "flex", gap: 1.25, flex: 1, alignItems: "stretch" }}>
-                {/* Photo Placeholder */}
                 <Box
                   sx={{
-                    width: 64,
-                    height: 82,
-                    bgcolor: "grey.200",
-                    borderRadius: 1,
-                    border: "1px solid #ddd",
                     display: "flex",
                     alignItems: "center",
-                    justifyContent: "center",
-                    flexShrink: 0,
-                    overflow: "hidden",
+                    justifyContent: "space-between",
+                    gap: 1,
+                    px: 1.5,
+                    py: 1,
+                    borderBottom: "1px solid #e5e7eb",
+                    bgcolor: "#f8fafc",
                   }}
                 >
-                  {cardStudent.documents &&
-                  cardStudent.documents.find(
-                    (d) => d.type_document === "Photo",
-                  ) ? (
-                    <img
-                      src={
-                        cardStudent.documents.find(
-                          (d) => d.type_document === "Photo",
-                        ).fichier
-                      }
-                      alt="Photo"
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "cover",
-                      }}
-                    />
-                  ) : (
-                    <BadgeIcon sx={{ fontSize: 36, color: "grey.400" }} />
-                  )}
-                </Box>
-
-                {/* Info */}
-                <Box
-                  sx={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 0.25,
-                    flex: 1,
-                    minWidth: 0,
-                    pt: 0.25,
-                  }}
-                >
-                  <Typography
-                    variant="body2"
-                    fontWeight="bold"
+                  <Box
                     sx={{
-                      lineHeight: 1.2,
-                      fontSize: 11,
-                      overflowWrap: "anywhere",
-                      wordBreak: "break-word",
+                      width: 32,
+                      height: 32,
+                      minWidth: 32,
+                      borderRadius: 1,
+                      backgroundColor: primaryColor,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "white",
+                      fontWeight: 700,
+                      fontSize: 12,
                     }}
                   >
-                    {cardStudent.nom?.toUpperCase()}
+                    {schoolName?.charAt(0)?.toUpperCase() || "S"}
+                  </Box>
+
+                  <Typography variant="caption" sx={{ flex: 1, fontWeight: 700, color: "text.primary", fontSize: 10, textTransform: "uppercase", textAlign: "left" }}>
+                    {schoolName.toUpperCase()}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: 8.4, lineHeight: 1.2 }}>
-                    Né(e) le : {formatDate(cardStudent.date_naissance)}
+                </Box>
+
+                <Box sx={{ px: 1.5, py: 0.75, textAlign: "center" }}>
+                  <Typography variant="caption" sx={{ fontWeight: 700, letterSpacing: 0.8, fontSize: 10, color: "primary.main", textTransform: "uppercase" }}>
+                    Carte d&apos;étudiant
                   </Typography>
-                  <Box sx={{ mt: 0.25, display: "flex", flexDirection: "column", gap: 0.15, minWidth: 0 }}>
-                    <Typography
-                      variant="caption"
-                      sx={{
-                        display: "block",
-                        fontWeight: "bold",
-                        color: "primary.main",
-                        fontSize: 8.5,
-                        lineHeight: 1.2,
-                        overflowWrap: "anywhere",
-                        wordBreak: "break-word",
-                      }}
-                    >
-                      MATRICULE : {cardStudent.matricule || "N/A"}
+                </Box>
+
+                <Box sx={{ px: 1.5, pb: 1.25, flex: 1, display: "flex", gap: 1.25 }}>
+                  <Box
+                    sx={{
+                      width: 74,
+                      height: 94,
+                      bgcolor: "#eef2f7",
+                      border: "1px solid #d9e0eb",
+                      borderRadius: 1,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      overflow: "hidden",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {cardStudent.documents && cardStudent.documents.find((d) => d.type_document === "Photo") ? (
+                      <img
+                        src={cardStudent.documents.find((d) => d.type_document === "Photo").fichier}
+                        alt="Photo"
+                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                      />
+                    ) : (
+                      <BadgeIcon sx={{ fontSize: 34, color: "grey.400" }} />
+                    )}
+                  </Box>
+
+                  <Box sx={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: 0.35, minWidth: 0 }}>
+                    <Typography sx={{ fontSize: 9.5, color: "text.primary", fontWeight: 700, textTransform: "uppercase", lineHeight: 1.2, overflowWrap: "anywhere", wordBreak: "break-word" }}>
+                      <Box component="span" sx={{ fontWeight: 600, color: "text.secondary" }}>NOM :</Box> {studentNom}
                     </Typography>
-                    <Typography
-                      variant="caption"
-                      sx={{ display: "block", lineHeight: 1.2, fontSize: 8.4, overflowWrap: "anywhere", wordBreak: "break-word" }}
-                    >
-                      Formation: {typeof cardStudent.filiere === "object"
-                        ? cardStudent.filiere?.intitule
-                        : filieres.find((f) => f.id === cardStudent.filiere)?.intitule ||
-                          cardStudent.filiere ||
-                          "-"}
+                    <Typography sx={{ fontSize: 9.5, color: "text.primary", lineHeight: 1.2, overflowWrap: "anywhere", wordBreak: "break-word" }}>
+                      <Box component="span" sx={{ fontWeight: 600, color: "text.secondary" }}>PRÉNOM :</Box> {studentPrenom}
                     </Typography>
-                    <Typography
-                      variant="caption"
-                      sx={{ display: "block", lineHeight: 1.2, fontSize: 8.4, overflowWrap: "anywhere", wordBreak: "break-word" }}
-                    >
-                      Niveau: {cardStudent.inscriptions && cardStudent.inscriptions.length > 0 ? cardStudent.inscriptions[0].niveau_nom : "-"}
+                    <Typography sx={{ fontSize: 9.5, color: "text.primary", lineHeight: 1.2, overflowWrap: "anywhere", wordBreak: "break-word" }}>
+                      <Box component="span" sx={{ fontWeight: 600, color: "text.secondary" }}>MATRICULE :</Box> {cardStudent.matricule || "N/A"}
                     </Typography>
-                    <Typography
-                      variant="caption"
-                      sx={{ display: "block", lineHeight: 1.2, fontSize: 8.4, overflowWrap: "anywhere", wordBreak: "break-word" }}
-                    >
-                      Année Ac.: {cardStudent.inscriptions && cardStudent.inscriptions.length > 0 ? cardStudent.inscriptions[0].annee_academique : "2025/2026"}
+                    <Typography sx={{ fontSize: 9.5, color: "text.primary", lineHeight: 1.2, overflowWrap: "anywhere", wordBreak: "break-word" }}>
+                      <Box component="span" sx={{ fontWeight: 600, color: "text.secondary" }}>FILIÈRE :</Box> {studentFiliere}
+                    </Typography>
+                    <Typography sx={{ fontSize: 9.5, color: "text.primary", lineHeight: 1.2, overflowWrap: "anywhere", wordBreak: "break-word" }}>
+                      <Box component="span" sx={{ fontWeight: 600, color: "text.secondary" }}>NIVEAU :</Box> {studentNiveau}
+                    </Typography>
+                    <Typography sx={{ fontSize: 9.5, color: "text.primary", lineHeight: 1.2, overflowWrap: "anywhere", wordBreak: "break-word" }}>
+                      <Box component="span" sx={{ fontWeight: 600, color: "text.secondary" }}>ANNÉE :</Box> {studentAnnee}
                     </Typography>
                   </Box>
                 </Box>
-              </Box>
 
-              {/* Footer */}
-              <Box sx={{ bgcolor: "primary.main", height: 8, width: "100%" }} />
-            </Box>
-          )}
+                <Box
+                  sx={{
+                    px: 1.5,
+                    pb: 1,
+                    pt: 0.5,
+                    display: "flex",
+                    alignItems: "flex-end",
+                    justifyContent: "space-between",
+                    borderTop: "1px solid #e5e7eb",
+                    bgcolor: "#fafbfc",
+                  }}
+                >
+                  <Typography sx={{ fontSize: 9, color: "text.secondary", fontStyle: "italic" }}>Signature</Typography>
+                  <Box
+                    sx={{
+                      width: 36,
+                      height: 36,
+                      border: "1px dashed #94a3b8",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "text.secondary",
+                      fontSize: 7,
+                      fontWeight: 700,
+                      borderRadius: 0.75,
+                    }}
+                  >
+                    QR
+                  </Box>
+                </Box>
+              </Box>
+            );
+          })()}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenCardDialog(false)}>Annuler</Button>
