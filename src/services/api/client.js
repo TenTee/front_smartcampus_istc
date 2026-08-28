@@ -22,8 +22,10 @@ apiClient.interceptors.request.use((config) => {
       config.headers.Authorization = `Bearer ${token}`;
     }
 
+    const requestUrl = config.url || '';
+    const isAuthRoute = requestUrl.includes('/api/auth/login/') || requestUrl.includes('/api/auth/token/refresh/');
     const academicYearId = localStorage.getItem('selectedAcademicYearId');
-    if (academicYearId) {
+    if (!isAuthRoute && academicYearId) {
       config.headers['X-Academic-Year'] = academicYearId;
     }
   }

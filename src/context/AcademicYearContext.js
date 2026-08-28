@@ -34,6 +34,7 @@ export const AcademicYearProvider = ({ children }) => {
         if (found && (found.est_active || allowInactive)) {
           setSelectedYear(found);
         } else {
+          localStorage.removeItem('selectedAcademicYearId');
           setSelectedYear(active);
           if (found && !allowInactive) {
             setYearError("L'année sélectionnée est archivée et ne peut être utilisée que par le super-admin.");
