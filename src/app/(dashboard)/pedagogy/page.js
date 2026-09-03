@@ -52,12 +52,15 @@ import {
   sallesService,
 } from '../../../services/api/services';
 import { getApiErrorMessage } from '../../../services/api/client';
+import { useUserPermissions } from '../../../utils/permissions';
 
 function toList(data) {
   return Array.isArray(data) ? data : data?.results || [];
 }
 
 export default function PedagogyPage() {
+  const { canWrite } = useUserPermissions();
+  const canWritePedagogie = canWrite('can_manage_pedagogie');
   const [tabValue, setTabValue] = useState(0);
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState([]);
@@ -307,7 +310,7 @@ const handleSave = async () => {
               {tabValue === 3 ? '🔒 Niveaux générés automatiquement via les filières' : '🔒 Classes générées automatiquement via les filières'}
             </Typography>
           )}
-          {canAdd && (
+          {canWritePedagogie && canAdd && (
             <Button variant="contained" startIcon={<AddIcon />} onClick={() => handleOpenDialog()}>
               Ajouter
             </Button>
@@ -416,7 +419,7 @@ const handleSave = async () => {
                   </>
                 )}
                 {/* Boutons Actions : masqués pour Niveaux et Classes (auto-gérés) */}
-                {![3, 4].includes(tabValue) && (
+                {![3, 4].includes(tabValue) && canWritePedagogie && (
                   <TableCell align="right">
                     <IconButton color="primary" size="small" onClick={() => handleOpenDialog(item)}><EditIcon fontSize="small" /></IconButton>
                     <IconButton color="error" size="small" onClick={() => handleDelete(item.id)}><DeleteIcon fontSize="small" /></IconButton>

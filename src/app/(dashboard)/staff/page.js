@@ -41,6 +41,7 @@ import PhoneIcon from "@mui/icons-material/Phone";
 import { personnelsService } from "../../../services/api/services";
 import ImportExportModal from "../../../components/importExport/ImportExportModal";
 import { getApiErrorMessage } from "../../../services/api/client";
+import { useUserPermissions } from "../../../utils/permissions";
 
 const COUNTRY_CODES = [
   { code: "+241", country: "GA", label: "Gabon (+241)" },
@@ -92,6 +93,8 @@ const fontionsOptions = [
 ];
 
 export default function StaffPage() {
+  const { canWrite } = useUserPermissions();
+  const canWriteRh = canWrite("can_manage_rh");
   const [searchTerm, setSearchTerm] = useState("");
   const [staffList, setStaffList] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -292,15 +295,17 @@ export default function StaffPage() {
           >
             Import / Export
           </Button>
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={<AddIcon />}
-            sx={{ borderRadius: 2 }}
-            onClick={handleOpenCreate}
-          >
-            Ajouter un membre
-          </Button>
+          {canWriteRh && (
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<AddIcon />}
+              sx={{ borderRadius: 2 }}
+              onClick={handleOpenCreate}
+            >
+              Ajouter un membre
+            </Button>
+          )}
         </Box>
       </Box>
 
@@ -440,20 +445,24 @@ export default function StaffPage() {
                       {member.salaire ? `${member.salaire} Fcfa` : "-"}
                     </TableCell>
                     <TableCell align="right">
-                      <IconButton
-                        size="small"
-                        color="info"
-                        onClick={() => handleEdit(member)}
-                      >
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        color="error"
-                        onClick={() => handleDeleteClick(member)}
-                      >
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
+                      {canWriteRh && (
+                        <IconButton
+                          size="small"
+                          color="info"
+                          onClick={() => handleEdit(member)}
+                        >
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      )}
+                      {canWriteRh && (
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={() => handleDeleteClick(member)}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))

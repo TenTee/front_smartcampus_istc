@@ -35,12 +35,15 @@ import {
   formateursService,
 } from '../../../services/api/services';
 import { getApiErrorMessage, getMediaUrl } from '../../../services/api/client';
+import { useUserPermissions } from '../../../utils/permissions';
 
 function toList(data) {
   return Array.isArray(data) ? data : data?.results || [];
 }
 
 export default function ExamsBankAdminPage() {
+  const { canWrite } = useUserPermissions();
+  const canWritePedagogie = canWrite('can_manage_pedagogie');
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [openImporter, setOpenImporter] = useState(false);
@@ -239,29 +242,31 @@ export default function ExamsBankAdminPage() {
     <Box sx={{ p: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h5">Banque d&apos;épreuves (Administration)</Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => {
-            setSelectedEpreuve(null);
-            setFormData({
-              nom: '',
-              description: '',
-              module: '',
-              classe: '',
-              annee_academique: '',
-              semestre: '',
-              type_epreuve: 'EXAMEN',
-              fichier: null,
-              corrige: null,
-              auteur: '',
-              est_partage: true,
-            });
-            setOpenImporter(true);
-          }}
-        >
-          Importer une épreuve
-        </Button>
+        {canWritePedagogie && (
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => {
+              setSelectedEpreuve(null);
+              setFormData({
+                nom: '',
+                description: '',
+                module: '',
+                classe: '',
+                annee_academique: '',
+                semestre: '',
+                type_epreuve: 'EXAMEN',
+                fichier: null,
+                corrige: null,
+                auteur: '',
+                est_partage: true,
+              });
+              setOpenImporter(true);
+            }}
+          >
+            Importer une épreuve
+          </Button>
+        )}
       </Box>
 
       {loading ? (
@@ -297,8 +302,8 @@ export default function ExamsBankAdminPage() {
                     <Button size="small" onClick={() => download(it.corrige)} disabled={!it.corrige}>
                       Télécharger Corrigé
                     </Button>
-                    <Button size="small" onClick={() => handleEdit(it)}>Modifier</Button>
-                    <Button size="small" color="error" onClick={() => handleDelete(it.id)}>Supprimer</Button>
+                    {canWritePedagogie && <Button size="small" onClick={() => handleEdit(it)}>Modifier</Button>}
+                    {canWritePedagogie && <Button size="small" color="error" onClick={() => handleDelete(it.id)}>Supprimer</Button>}
                   </Box>
                 </CardContent>
               </Card>

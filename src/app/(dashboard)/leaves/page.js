@@ -14,10 +14,13 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { congesService, demandesService, personnelsService } from '../../../services/api/services';
 import { getApiErrorMessage } from '../../../services/api/client';
+import { useUserPermissions } from '../../../utils/permissions';
 
 const initialCongeForm = { date_debut: '', date_fin: '', type_conge: '', raison: '', statut: 'en_attente', personnel_id: '' };
 
 export default function LeavesRequestsPage() {
+  const { canWrite } = useUserPermissions();
+  const canWriteRh = canWrite('can_manage_rh');
   const [tabValue, setTabValue] = useState(0);
   const [loading, setLoading] = useState(true);
   
@@ -173,7 +176,7 @@ export default function LeavesRequestsPage() {
         <Typography variant="h5" fontWeight="bold" color="primary">
           Congés & Demandes Administratives
         </Typography>
-        {tabValue === 0 && (
+        {tabValue === 0 && canWriteRh && (
           <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={handleOpenCongeCreate}>
             Ajouter un Congé
           </Button>
@@ -220,12 +223,16 @@ export default function LeavesRequestsPage() {
                       </TableCell>
                       <TableCell>{renderStatus(leave.statut)}</TableCell>
                       <TableCell align="right">
-                        <IconButton size="small" color="info" onClick={() => handleEditConge(leave)}>
-                          <EditIcon fontSize="small" />
-                        </IconButton>
-                        <IconButton size="small" color="error" onClick={() => handleDeleteClick(leave, 'conge')}>
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
+                        {canWriteRh && (
+                          <IconButton size="small" color="info" onClick={() => handleEditConge(leave)}>
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                        )}
+                        {canWriteRh && (
+                          <IconButton size="small" color="error" onClick={() => handleDeleteClick(leave, 'conge')}>
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}

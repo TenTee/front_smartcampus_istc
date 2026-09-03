@@ -50,6 +50,7 @@ import {
 } from "../../../services/api/services";
 import ImportExportModal from "../../../components/importExport/ImportExportModal";
 import { getApiErrorMessage } from "../../../services/api/client";
+import { useUserPermissions } from "../../../utils/permissions";
 
 const COUNTRY_CODES = [
   { code: "+241", country: "GA", label: "Gabon (+241)" },
@@ -77,6 +78,8 @@ const initialForm = {
 };
 
 export default function FormateursPage() {
+  const { canWrite } = useUserPermissions();
+  const canWriteRh = canWrite("can_manage_rh");
   const [searchTerm, setSearchTerm] = useState("");
   const [formateurs, setFormateurs] = useState([]);
   const [specialitesList, setSpecialitesList] = useState([]);
@@ -377,15 +380,17 @@ export default function FormateursPage() {
           >
             Import / Export
           </Button>
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={<AddIcon />}
-            sx={{ borderRadius: 2 }}
-            onClick={handleOpenCreate}
-          >
-            Ajouter un formateur
-          </Button>
+          {canWriteRh && (
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<AddIcon />}
+              sx={{ borderRadius: 2 }}
+              onClick={handleOpenCreate}
+            >
+              Ajouter un formateur
+            </Button>
+          )}
         </Box>
       </Box>
 
@@ -557,20 +562,24 @@ export default function FormateursPage() {
                       >
                         <VisibilityIcon fontSize="small" />
                       </IconButton>
-                      <IconButton
-                        size="small"
-                        color="info"
-                        onClick={() => handleEdit(formateur)}
-                      >
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        color="error"
-                        onClick={() => handleDeleteClick(formateur)}
-                      >
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
+                      {canWriteRh && (
+                        <IconButton
+                          size="small"
+                          color="info"
+                          onClick={() => handleEdit(formateur)}
+                        >
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      )}
+                      {canWriteRh && (
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={() => handleDeleteClick(formateur)}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))

@@ -3,8 +3,6 @@
 import React, { useState, useMemo, useEffect, Suspense } from "react";
 import { Box, CircularProgress } from "@mui/material";
 import { useSearchParams } from "next/navigation";
-import LandingHeader from "@/components/landing/LandingHeader";
-import Footer from "@/components/landing/Footer";
 import DocHero from "@/components/documentation/DocHero";
 import DocCategoryTabs from "@/components/documentation/DocCategoryTabs";
 import DocCardGrid from "@/components/documentation/DocCardGrid";
@@ -53,9 +51,6 @@ function DocumentationContent() {
 
   return (
     <Box sx={{ width: "100%", minHeight: "100vh", backgroundColor: "#FFFFFF" }}>
-      {/* Navigation Menu Header */}
-      <LandingHeader />
-
       {/* Hero Header with Search Bar */}
       <DocHero
         searchSearchTerm={searchTerm}
@@ -79,9 +74,6 @@ function DocumentationContent() {
 
       {/* FAQ & Support Section */}
       <DocFAQ />
-
-      {/* Footer */}
-      <Footer />
     </Box>
   );
 }

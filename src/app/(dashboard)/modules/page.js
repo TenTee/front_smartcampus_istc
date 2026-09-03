@@ -34,12 +34,15 @@ import {
 import { Add as AddIcon, Delete as DeleteIcon, Edit as EditIcon, Search as SearchIcon } from '@mui/icons-material';
 import { classesService, modulesService } from '../../../services/api/services';
 import { getApiErrorMessage } from '../../../services/api/client';
+import { useUserPermissions } from '../../../utils/permissions';
 
 function toList(data) {
   return Array.isArray(data) ? data : data?.results || [];
 }
 
 export default function ModulesPage() {
+  const { canWrite } = useUserPermissions();
+  const canWritePedagogie = canWrite('can_manage_pedagogie');
   const [modules, setModules] = useState([]);
   const [classes, setClasses] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -166,9 +169,11 @@ export default function ModulesPage() {
         <Typography variant="h5" fontWeight="bold" color="primary">
           Cours et modules
         </Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => handleOpenDialog()}>
-          Nouveau cours
-        </Button>
+        {canWritePedagogie && (
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => handleOpenDialog()}>
+            Nouveau cours
+          </Button>
+        )}
       </Box>
 
       <Card sx={{ mb: 3, p: 2, borderRadius: 3, boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
@@ -232,12 +237,16 @@ export default function ModulesPage() {
                   </Box>
                 </TableCell>
                 <TableCell align="right">
-                  <IconButton color="primary" onClick={() => handleOpenDialog(item)}>
-                    <EditIcon fontSize="small" />
-                  </IconButton>
-                  <IconButton color="error" onClick={() => { setModuleToDelete(item); setOpenDeleteDialog(true); }}>
-                    <DeleteIcon fontSize="small" />
-                  </IconButton>
+                  {canWritePedagogie && (
+                    <IconButton color="primary" onClick={() => handleOpenDialog(item)}>
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                  )}
+                  {canWritePedagogie && (
+                    <IconButton color="error" onClick={() => { setModuleToDelete(item); setOpenDeleteDialog(true); }}>
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  )}
                 </TableCell>
               </TableRow>
             ))}

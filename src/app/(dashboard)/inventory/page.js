@@ -70,6 +70,7 @@ import {
   demandeursService,
 } from "../../../services/api/services";
 import { getApiErrorMessage } from "../../../services/api/client";
+import { useUserPermissions } from "../../../utils/permissions";
 
 const CATEGORIES = [
   "Informatique",
@@ -117,6 +118,8 @@ const DEMANDE_STATUTS = {
 };
 
 export default function InventoryPage() {
+  const { canWrite } = useUserPermissions();
+  const canWriteLogistique = canWrite('can_manage_logistique');
   const [currentTab, setCurrentTab] = useState(0);
   const [openImportExport, setOpenImportExport] = useState(false);
   const [snack, setSnack] = useState({
@@ -613,30 +616,32 @@ export default function InventoryPage() {
             >
               Import / Export
             </Button>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => {
-                setEditingArticle(null);
-                setArticleForm({
-                  nom: "",
-                  description: "",
-                  categorie: "Informatique",
-                  quantite_initiale: 1,
-                  seuil_alerte: 5,
-                  prix_unitaire: 0,
-                  fournisseur: "",
-                  condition: "neuf",
-                  localisation: "",
-                });
-                setOpenArticleForm(true);
-              }}
-            >
-              Nouvel article
-            </Button>
+            {canWriteLogistique && (
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={() => {
+                  setEditingArticle(null);
+                  setArticleForm({
+                    nom: "",
+                    description: "",
+                    categorie: "Informatique",
+                    quantite_initiale: 1,
+                    seuil_alerte: 5,
+                    prix_unitaire: 0,
+                    fournisseur: "",
+                    condition: "neuf",
+                    localisation: "",
+                  });
+                  setOpenArticleForm(true);
+                }}
+              >
+                Nouvel article
+              </Button>
+            )}
           </Box>
         )}
-        {currentTab === 1 && (
+        {currentTab === 1 && canWriteLogistique && (
           <Button
             variant="contained"
             startIcon={<AddIcon />}
@@ -813,59 +818,65 @@ export default function InventoryPage() {
                             {Number(art.prix_unitaire).toLocaleString()} F
                           </TableCell>
                           <TableCell align="right">
-                            <Tooltip title="Ajouter au stock">
-                              <IconButton
-                                size="small"
-                                color="success"
-                                onClick={() => {
-                                  setAddStockTarget(art);
-                                  setAddStockForm({
-                                    quantite: 1,
-                                    condition: "neuf",
-                                    localisation: "",
-                                    date_acquisition: "",
-                                  });
-                                  setOpenAddStock(true);
-                                }}
-                              >
-                                <AddIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Modifier">
-                              <IconButton
-                                size="small"
-                                color="primary"
-                                onClick={() => {
-                                  setEditingArticle(art);
-                                  setArticleForm({
-                                    nom: art.nom,
-                                    description: art.description || "",
-                                    categorie: art.categorie,
-                                    quantite_initiale: 0,
-                                    seuil_alerte: art.seuil_alerte,
-                                    prix_unitaire: art.prix_unitaire,
-                                    fournisseur: art.fournisseur || "",
-                                    condition: "neuf",
-                                    localisation: "",
-                                  });
-                                  setOpenArticleForm(true);
-                                }}
-                              >
-                                <EditIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Supprimer">
-                              <IconButton
-                                size="small"
-                                color="error"
-                                onClick={() => {
-                                  setDeleteTarget(art);
-                                  setOpenDelete(true);
-                                }}
-                              >
-                                <DeleteIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
+                            {canWriteLogistique && (
+                              <Tooltip title="Ajouter au stock">
+                                <IconButton
+                                  size="small"
+                                  color="success"
+                                  onClick={() => {
+                                    setAddStockTarget(art);
+                                    setAddStockForm({
+                                      quantite: 1,
+                                      condition: "neuf",
+                                      localisation: "",
+                                      date_acquisition: "",
+                                    });
+                                    setOpenAddStock(true);
+                                  }}
+                                >
+                                  <AddIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            )}
+                            {canWriteLogistique && (
+                              <Tooltip title="Modifier">
+                                <IconButton
+                                  size="small"
+                                  color="primary"
+                                  onClick={() => {
+                                    setEditingArticle(art);
+                                    setArticleForm({
+                                      nom: art.nom,
+                                      description: art.description || "",
+                                      categorie: art.categorie,
+                                      quantite_initiale: 0,
+                                      seuil_alerte: art.seuil_alerte,
+                                      prix_unitaire: art.prix_unitaire,
+                                      fournisseur: art.fournisseur || "",
+                                      condition: "neuf",
+                                      localisation: "",
+                                    });
+                                    setOpenArticleForm(true);
+                                  }}
+                                >
+                                  <EditIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            )}
+                            {canWriteLogistique && (
+                              <Tooltip title="Supprimer">
+                                <IconButton
+                                  size="small"
+                                  color="error"
+                                  onClick={() => {
+                                    setDeleteTarget(art);
+                                    setOpenDelete(true);
+                                  }}
+                                >
+                                  <DeleteIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            )}
                           </TableCell>
                         </TableRow>
                         <TableRow>
@@ -1203,7 +1214,7 @@ export default function InventoryPage() {
                                 : "-"}
                             </TableCell>
                             <TableCell align="right">
-                              {dem.statut === "brouillon" && (
+                              {canWriteLogistique && dem.statut === "brouillon" && (
                                 <Tooltip title="Soumettre">
                                   <IconButton
                                     size="small"
@@ -1214,34 +1225,35 @@ export default function InventoryPage() {
                                   </IconButton>
                                 </Tooltip>
                               )}
-                              {(dem.statut === "soumise" ||
-                                dem.statut === "en_cours") && (
-                                <>
-                                  <Tooltip title="Approuver">
-                                    <IconButton
-                                      size="small"
-                                      color="success"
-                                      onClick={() => handleApprouver(dem.id)}
-                                    >
-                                      <ThumbUpIcon fontSize="small" />
-                                    </IconButton>
-                                  </Tooltip>
-                                  <Tooltip title="Refuser">
-                                    <IconButton
-                                      size="small"
-                                      color="error"
-                                      onClick={() => {
-                                        setRefusTarget(dem);
-                                        setRefusComment("");
-                                        setOpenRefus(true);
-                                      }}
-                                    >
-                                      <ThumbDownIcon fontSize="small" />
-                                    </IconButton>
-                                  </Tooltip>
-                                </>
-                              )}
-                              {dem.statut === "approuvee" && (
+                              {canWriteLogistique &&
+                                (dem.statut === "soumise" ||
+                                  dem.statut === "en_cours") && (
+                                  <>
+                                    <Tooltip title="Approuver">
+                                      <IconButton
+                                        size="small"
+                                        color="success"
+                                        onClick={() => handleApprouver(dem.id)}
+                                      >
+                                        <ThumbUpIcon fontSize="small" />
+                                      </IconButton>
+                                    </Tooltip>
+                                    <Tooltip title="Refuser">
+                                      <IconButton
+                                        size="small"
+                                        color="error"
+                                        onClick={() => {
+                                          setRefusTarget(dem);
+                                          setRefusComment("");
+                                          setOpenRefus(true);
+                                        }}
+                                      >
+                                        <ThumbDownIcon fontSize="small" />
+                                      </IconButton>
+                                    </Tooltip>
+                                  </>
+                                )}
+                              {canWriteLogistique && dem.statut === "approuvee" && (
                                 <Tooltip title="Livrer">
                                   <IconButton
                                     size="small"

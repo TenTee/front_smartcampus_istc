@@ -38,6 +38,7 @@ import { useAcademicYear } from '../../../context/AcademicYearContext';
 import CardSkeletonGrid from '../../../components/common/CardSkeleton';
 import TableSkeleton from '../../../components/common/TableSkeleton';
 import ErrorState from '../../../components/common/ErrorState';
+import { useUserPermissions } from '../../../utils/permissions';
 
 const CATEGORIES_DEPENSE = ["Materiel", "Entretien", "Logistique", "Activites", "Autres"];
 const STATUTS_DEPENSE = ["En attente", "Validée", "Rejetée"];
@@ -54,6 +55,8 @@ const initialRevenuForm = {
 };
 
 export default function FinancesPage() {
+  const { canWrite } = useUserPermissions();
+  const canWriteFinance = canWrite('can_manage_finance');
   const [currentTab, setCurrentTab] = useState(0);
 
   // Dashboard scolarite
@@ -260,10 +263,10 @@ export default function FinancesPage() {
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h5" fontWeight="bold" color="primary">Aperçu Financier Global</Typography>
-        {currentTab === 1 && (
+        {currentTab === 1 && canWriteFinance && (
           <Button variant="contained" startIcon={<AddIcon />} onClick={() => { setIsEditingRevenu(false); setFormRevenu({ ...initialRevenuForm, date_entree: new Date().toISOString().split('T')[0] }); setSelectedRevenu(null); setOpenRevenuForm(true); }}>Ajouter un revenu</Button>
         )}
-        {currentTab === 2 && (
+        {currentTab === 2 && canWriteFinance && (
           <Button variant="contained" startIcon={<AddIcon />} onClick={() => { setIsEditingDepense(false); setFormDepense({ ...initialDepenseForm, date_depense: new Date().toISOString().split('T')[0] }); setSelectedDepense(null); setOpenDepenseForm(true); }}>Ajouter une dépense</Button>
         )}
       </Box>
@@ -577,8 +580,12 @@ export default function FinancesPage() {
                     <TableCell sx={{ fontWeight: 'bold', color: 'success.main' }}>+{Number(rev.montant).toLocaleString()} FCFA</TableCell>
                     <TableCell><Chip label={rev.statut || 'N/A'} color={rev.statut === 'Validé' ? 'success' : 'warning'} size="small" /></TableCell>
                     <TableCell align="right">
-                      <IconButton size="small" color="primary" onClick={() => { setIsEditingRevenu(true); setFormRevenu({ libelle: rev.libelle || '', montant: rev.montant || '', categorie: rev.categorie || 'Inscription', date_entree: rev.date_entree ? rev.date_entree.split('T')[0] : '', responsable: rev.responsable || '', statut: rev.statut || 'Validé', justificatif: null }); setSelectedRevenu(rev); setOpenRevenuForm(true); }}><EditIcon fontSize="small" /></IconButton>
-                      <IconButton size="small" color="error" onClick={() => confirmDelete(rev, 'revenu')}><DeleteIcon fontSize="small" /></IconButton>
+                      {canWriteFinance && (
+                        <IconButton size="small" color="primary" onClick={() => { setIsEditingRevenu(true); setFormRevenu({ libelle: rev.libelle || '', montant: rev.montant || '', categorie: rev.categorie || 'Inscription', date_entree: rev.date_entree ? rev.date_entree.split('T')[0] : '', responsable: rev.responsable || '', statut: rev.statut || 'Validé', justificatif: null }); setSelectedRevenu(rev); setOpenRevenuForm(true); }}><EditIcon fontSize="small" /></IconButton>
+                      )}
+                      {canWriteFinance && (
+                        <IconButton size="small" color="error" onClick={() => confirmDelete(rev, 'revenu')}><DeleteIcon fontSize="small" /></IconButton>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -617,8 +624,12 @@ export default function FinancesPage() {
                     <TableCell sx={{ fontWeight: 'bold', color: 'error.main' }}>-{Number(dep.montant).toLocaleString()} FCFA</TableCell>
                     <TableCell><Chip label={dep.statut || 'N/A'} color={dep.statut === 'Validée' ? 'success' : dep.statut === 'Rejetée' ? 'error' : 'warning'} size="small" /></TableCell>
                     <TableCell align="right">
-                      <IconButton size="small" color="primary" onClick={() => { setIsEditingDepense(true); setFormDepense({ libelle: dep.libelle || '', montant: dep.montant || '', categorie: dep.categorie || 'Materiel', date_depense: dep.date_depense ? dep.date_depense.split('T')[0] : '', statut: dep.statut || 'En attente', responsable: demandeurs.find(d => d.nom === dep.responsable_nom) || null, justificatif: null }); setSelectedDepense(dep); setOpenDepenseForm(true); }}><EditIcon fontSize="small" /></IconButton>
-                      <IconButton size="small" color="error" onClick={() => confirmDelete(dep, 'depense')}><DeleteIcon fontSize="small" /></IconButton>
+                      {canWriteFinance && (
+                        <IconButton size="small" color="primary" onClick={() => { setIsEditingDepense(true); setFormDepense({ libelle: dep.libelle || '', montant: dep.montant || '', categorie: dep.categorie || 'Materiel', date_depense: dep.date_depense ? dep.date_depense.split('T')[0] : '', statut: dep.statut || 'En attente', responsable: demandeurs.find(d => d.nom === dep.responsable_nom) || null, justificatif: null }); setSelectedDepense(dep); setOpenDepenseForm(true); }}><EditIcon fontSize="small" /></IconButton>
+                      )}
+                      {canWriteFinance && (
+                        <IconButton size="small" color="error" onClick={() => confirmDelete(dep, 'depense')}><DeleteIcon fontSize="small" /></IconButton>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

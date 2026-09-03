@@ -55,6 +55,7 @@ import { jsPDF } from "jspdf";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import SchoolIcon from "@mui/icons-material/School";
 import { useAcademicYear } from "../../../context/AcademicYearContext";
+import { useUserPermissions } from "../../../utils/permissions";
 import {
   etudiantsService,
   filieresV2Service,
@@ -233,6 +234,9 @@ const initialPaymentPlanForm = {
 };
 
 export default function StudentsPage() {
+  const { canWrite } = useUserPermissions();
+  const canWriteStudents = canWrite("can_manage_etudiants");
+  const canWriteFinance = canWrite("can_manage_finance");
   const [searchTerm, setSearchTerm] = useState("");
   const [courseFilter, setCourseFilter] = useState("Tous");
   const [classFilter, setClassFilter] = useState("Tous");
@@ -906,15 +910,17 @@ export default function StudentsPage() {
           >
             Exporter (Excel)
           </Button>
-          {/* <Button
-            variant="contained"
-            color="primary"
-            startIcon={<AddIcon />}
-            sx={{ borderRadius: 2 }}
-            onClick={handleOpenCreate}
-          >
-            Ajouter un étudiant
-          </Button> */}
+          {canWriteStudents && (
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<AddIcon />}
+              sx={{ borderRadius: 2 }}
+              onClick={handleOpenCreate}
+            >
+              Ajouter un étudiant
+            </Button>
+          )}
         </Box>
       </Box>
 
@@ -1177,22 +1183,26 @@ export default function StudentsPage() {
                       >
                         <VisibilityIcon fontSize="small" />
                       </IconButton>
-                      <IconButton
-                        size="small"
-                        color="info"
-                        onClick={() => handleEdit(student)}
-                        title="Modifier"
-                      >
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        color="error"
-                        onClick={() => handleDeleteClick(student)}
-                        title="Supprimer"
-                      >
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
+                      {canWriteStudents && (
+                        <IconButton
+                          size="small"
+                          color="info"
+                          onClick={() => handleEdit(student)}
+                          title="Modifier"
+                        >
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      )}
+                      {canWriteStudents && (
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={() => handleDeleteClick(student)}
+                          title="Supprimer"
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))
@@ -1866,13 +1876,15 @@ export default function StudentsPage() {
             <Typography variant="subtitle1" fontWeight="bold">
               Echeancier et alertes
             </Typography>
-            <Button
-              size="small"
-              variant="contained"
-              onClick={handleOpenPaymentPlanDialog}
-            >
-              Configurer
-            </Button>
+            {(canWriteFinance || canWriteStudents) && (
+              <Button
+                size="small"
+                variant="contained"
+                onClick={handleOpenPaymentPlanDialog}
+              >
+                Configurer
+              </Button>
+            )}
           </Box>
           {loadingStudentPlan ? (
             <Box sx={{ py: 2, display: "flex", justifyContent: "center" }}>

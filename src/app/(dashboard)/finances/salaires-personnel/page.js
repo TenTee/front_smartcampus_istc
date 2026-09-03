@@ -24,6 +24,7 @@ import {
   bulletinsService, campagnesService, statistiquesPaieService, demandeursService,
 } from '../../../../services/api/services';
 import { getApiErrorMessage } from '../../../../services/api/client';
+import { useUserPermissions } from '../../../../utils/permissions';
 
 const MOIS_LABELS = [
   '', 'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
@@ -54,6 +55,8 @@ const TYPES_RETENUE = [
 const BENEFICIAIRE_TYPE = 'Personnel';
 
 export default function SalairesPersonnelPage() {
+  const { canWrite } = useUserPermissions();
+  const canWriteFinance = canWrite('can_manage_finance');
   const [currentTab, setCurrentTab] = useState(0);
   const [toast, setToast] = useState({ open: false, message: '', severity: 'success' });
   const [demandeurs, setDemandeurs] = useState([]);
@@ -436,11 +439,13 @@ export default function SalairesPersonnelPage() {
       {/* TAB 0: CAMPAGNES */}
       {currentTab === 0 && (
         <Box>
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-            <Button variant="contained" startIcon={<PlayArrowIcon />} onClick={() => setOpenGenerer(true)}>
-              Générer une campagne
-            </Button>
-          </Box>
+          {canWriteFinance && (
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+              <Button variant="contained" startIcon={<PlayArrowIcon />} onClick={() => setOpenGenerer(true)}>
+                Générer une campagne
+              </Button>
+            </Box>
+          )}
           <TableContainer component={Paper} sx={{ borderRadius: 3 }}>
             <Table>
               <TableHead sx={{ bgcolor: '#F5F7FA' }}>
@@ -468,9 +473,9 @@ export default function SalairesPersonnelPage() {
                     </TableCell>
                     <TableCell align="right">
                       <Tooltip title="Voir les bulletins"><IconButton size="small" color="primary" onClick={() => handleViewCampagne(camp)}><VisibilityIcon fontSize="small" /></IconButton></Tooltip>
-                      {camp.statut === 'brouillon' && (<Tooltip title="Valider"><IconButton size="small" color="info" onClick={() => handleValiderCampagne(camp.id)}><CheckCircleIcon fontSize="small" /></IconButton></Tooltip>)}
-                      {camp.statut === 'validee' && (<Tooltip title="Marquer comme payée"><IconButton size="small" color="success" onClick={() => handlePayerCampagne(camp.id)}><PaymentIcon fontSize="small" /></IconButton></Tooltip>)}
-                      {camp.statut === 'brouillon' && (<IconButton size="small" color="error" onClick={() => confirmDelete(camp, 'campagne')}><DeleteIcon fontSize="small" /></IconButton>)}
+                      {canWriteFinance && camp.statut === 'brouillon' && (<Tooltip title="Valider"><IconButton size="small" color="info" onClick={() => handleValiderCampagne(camp.id)}><CheckCircleIcon fontSize="small" /></IconButton></Tooltip>)}
+                      {canWriteFinance && camp.statut === 'validee' && (<Tooltip title="Marquer comme payée"><IconButton size="small" color="success" onClick={() => handlePayerCampagne(camp.id)}><PaymentIcon fontSize="small" /></IconButton></Tooltip>)}
+                      {canWriteFinance && camp.statut === 'brouillon' && (<IconButton size="small" color="error" onClick={() => confirmDelete(camp, 'campagne')}><DeleteIcon fontSize="small" /></IconButton>)}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -486,15 +491,17 @@ export default function SalairesPersonnelPage() {
       {/* TAB 1: PRIMES */}
       {currentTab === 1 && (
         <Box>
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-            <Button variant="contained" startIcon={<AddIcon />} onClick={() => {
-              setEditingPrime(null);
-              setPrimeForm({ beneficiaire_content_type: '', beneficiaire_object_id: '', type_prime: 'transport', libelle: '', montant: '', est_permanente: true, est_active: true, date_debut: '', date_fin: '' });
-              setOpenPrimeForm(true);
-            }}>
-              Ajouter une prime
-            </Button>
-          </Box>
+          {canWriteFinance && (
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+              <Button variant="contained" startIcon={<AddIcon />} onClick={() => {
+                setEditingPrime(null);
+                setPrimeForm({ beneficiaire_content_type: '', beneficiaire_object_id: '', type_prime: 'transport', libelle: '', montant: '', est_permanente: true, est_active: true, date_debut: '', date_fin: '' });
+                setOpenPrimeForm(true);
+              }}>
+                Ajouter une prime
+              </Button>
+            </Box>
+          )}
           <TableContainer component={Paper} sx={{ borderRadius: 3 }}>
             <Table>
               <TableHead sx={{ bgcolor: '#F5F7FA' }}>
@@ -517,12 +524,16 @@ export default function SalairesPersonnelPage() {
                     <TableCell>{prime.est_permanente ? 'Oui' : 'Non'}</TableCell>
                     <TableCell><Chip label={prime.est_active ? 'Active' : 'Inactive'} color={prime.est_active ? 'success' : 'default'} size="small" /></TableCell>
                     <TableCell align="right">
-                      <IconButton size="small" color="primary" onClick={() => {
-                        setEditingPrime(prime);
-                        setPrimeForm({ beneficiaire_content_type: prime.beneficiaire_content_type, beneficiaire_object_id: prime.beneficiaire_object_id, type_prime: prime.type_prime, libelle: prime.libelle || '', montant: prime.montant, est_permanente: prime.est_permanente, est_active: prime.est_active, date_debut: prime.date_debut || '', date_fin: prime.date_fin || '' });
-                        setOpenPrimeForm(true);
-                      }}><EditIcon fontSize="small" /></IconButton>
-                      <IconButton size="small" color="error" onClick={() => confirmDelete(prime, 'prime')}><DeleteIcon fontSize="small" /></IconButton>
+                      {canWriteFinance && (
+                        <IconButton size="small" color="primary" onClick={() => {
+                          setEditingPrime(prime);
+                          setPrimeForm({ beneficiaire_content_type: prime.beneficiaire_content_type, beneficiaire_object_id: prime.beneficiaire_object_id, type_prime: prime.type_prime, libelle: prime.libelle || '', montant: prime.montant, est_permanente: prime.est_permanente, est_active: prime.est_active, date_debut: prime.date_debut || '', date_fin: prime.date_fin || '' });
+                          setOpenPrimeForm(true);
+                        }}><EditIcon fontSize="small" /></IconButton>
+                      )}
+                      {canWriteFinance && (
+                        <IconButton size="small" color="error" onClick={() => confirmDelete(prime, 'prime')}><DeleteIcon fontSize="small" /></IconButton>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -536,15 +547,17 @@ export default function SalairesPersonnelPage() {
       {/* TAB 2: RETENUES */}
       {currentTab === 2 && (
         <Box>
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-            <Button variant="contained" startIcon={<AddIcon />} onClick={() => {
-              setEditingRetenue(null);
-              setRetenueForm({ beneficiaire_content_type: '', beneficiaire_object_id: '', type_retenue: 'cnps', libelle: '', montant: '', est_permanente: true, est_active: true, date_debut: '', date_fin: '' });
-              setOpenRetenueForm(true);
-            }}>
-              Ajouter une retenue
-            </Button>
-          </Box>
+          {canWriteFinance && (
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+              <Button variant="contained" startIcon={<AddIcon />} onClick={() => {
+                setEditingRetenue(null);
+                setRetenueForm({ beneficiaire_content_type: '', beneficiaire_object_id: '', type_retenue: 'cnps', libelle: '', montant: '', est_permanente: true, est_active: true, date_debut: '', date_fin: '' });
+                setOpenRetenueForm(true);
+              }}>
+                Ajouter une retenue
+              </Button>
+            </Box>
+          )}
           <TableContainer component={Paper} sx={{ borderRadius: 3 }}>
             <Table>
               <TableHead sx={{ bgcolor: '#F5F7FA' }}>
@@ -567,12 +580,16 @@ export default function SalairesPersonnelPage() {
                     <TableCell>{ret.est_permanente ? 'Oui' : 'Non'}</TableCell>
                     <TableCell><Chip label={ret.est_active ? 'Active' : 'Inactive'} color={ret.est_active ? 'success' : 'default'} size="small" /></TableCell>
                     <TableCell align="right">
-                      <IconButton size="small" color="primary" onClick={() => {
-                        setEditingRetenue(ret);
-                        setRetenueForm({ beneficiaire_content_type: ret.beneficiaire_content_type, beneficiaire_object_id: ret.beneficiaire_object_id, type_retenue: ret.type_retenue, libelle: ret.libelle || '', montant: ret.montant, est_permanente: ret.est_permanente, est_active: ret.est_active, date_debut: ret.date_debut || '', date_fin: ret.date_fin || '' });
-                        setOpenRetenueForm(true);
-                      }}><EditIcon fontSize="small" /></IconButton>
-                      <IconButton size="small" color="error" onClick={() => confirmDelete(ret, 'retenue')}><DeleteIcon fontSize="small" /></IconButton>
+                      {canWriteFinance && (
+                        <IconButton size="small" color="primary" onClick={() => {
+                          setEditingRetenue(ret);
+                          setRetenueForm({ beneficiaire_content_type: ret.beneficiaire_content_type, beneficiaire_object_id: ret.beneficiaire_object_id, type_retenue: ret.type_retenue, libelle: ret.libelle || '', montant: ret.montant, est_permanente: ret.est_permanente, est_active: ret.est_active, date_debut: ret.date_debut || '', date_fin: ret.date_fin || '' });
+                          setOpenRetenueForm(true);
+                        }}><EditIcon fontSize="small" /></IconButton>
+                      )}
+                      {canWriteFinance && (
+                        <IconButton size="small" color="error" onClick={() => confirmDelete(ret, 'retenue')}><DeleteIcon fontSize="small" /></IconButton>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -586,14 +603,16 @@ export default function SalairesPersonnelPage() {
       {/* TAB 3: AVANCES */}
       {currentTab === 3 && (
         <Box>
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-            <Button variant="contained" startIcon={<AddIcon />} onClick={() => {
-              setAvanceForm({ beneficiaire_content_type: '', beneficiaire_object_id: '', montant_total: '', nombre_echeances: 1, motif: '', date_debut_remboursement: '' });
-              setOpenAvanceForm(true);
-            }}>
-              Nouvelle avance
-            </Button>
-          </Box>
+          {canWriteFinance && (
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+              <Button variant="contained" startIcon={<AddIcon />} onClick={() => {
+                setAvanceForm({ beneficiaire_content_type: '', beneficiaire_object_id: '', montant_total: '', nombre_echeances: 1, motif: '', date_debut_remboursement: '' });
+                setOpenAvanceForm(true);
+              }}>
+                Nouvelle avance
+              </Button>
+            </Box>
+          )}
           <TableContainer component={Paper} sx={{ borderRadius: 3 }}>
             <Table>
               <TableHead sx={{ bgcolor: '#F5F7FA' }}>
@@ -623,7 +642,9 @@ export default function SalairesPersonnelPage() {
                       <TableCell>{av.nombre_echeances} mois ({Number(av.montant_echeance).toLocaleString()}/mois)</TableCell>
                       <TableCell><Chip label={av.statut_display || av.statut} color={av.statut === 'remboursee' ? 'success' : av.statut === 'en_cours' ? 'warning' : 'error'} size="small" /></TableCell>
                       <TableCell align="right">
-                        <IconButton size="small" color="error" onClick={() => confirmDelete(av, 'avance')}><DeleteIcon fontSize="small" /></IconButton>
+                        {canWriteFinance && (
+                          <IconButton size="small" color="error" onClick={() => confirmDelete(av, 'avance')}><DeleteIcon fontSize="small" /></IconButton>
+                        )}
                       </TableCell>
                     </TableRow>
                   );

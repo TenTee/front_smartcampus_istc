@@ -46,6 +46,7 @@ import { formatDate } from "../../../utils/formatters";
 import Skeleton from "@mui/material/Skeleton";
 import ErrorState from "../../../components/common/ErrorState";
 import { useAcademicYear } from "../../../context/AcademicYearContext";
+import { useUserPermissions } from "../../../utils/permissions";
 
 const initialForm = {
   etudiant: "",
@@ -59,6 +60,8 @@ const initialForm = {
 };
 
 export default function AttendancePage() {
+  const { canWrite } = useUserPermissions();
+  const canWritePedagogie = canWrite('can_manage_pedagogie');
   const [attendances, setAttendances] = useState([]);
   const [students, setStudents] = useState([]);
   const [modules, setModules] = useState([]);
@@ -218,13 +221,15 @@ export default function AttendancePage() {
         <Typography variant="h5" fontWeight="bold" color="primary">
           Assiduité
         </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => handleOpenDialog()}
-        >
-          Ajouter une absence / un retard
-        </Button>
+        {canWritePedagogie && (
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => handleOpenDialog()}
+          >
+            Ajouter une absence / un retard
+          </Button>
+        )}
       </Box>
 
       <Paper sx={{ borderRadius: 3, overflow: "hidden" }}>
@@ -370,23 +375,27 @@ export default function AttendancePage() {
                           <WhatsAppIcon fontSize="small" />
                         </IconButton>
                       )}
-                      <IconButton
-                        color="primary"
-                        onClick={() => handleOpenDialog(item)}
-                        size="small"
-                      >
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton
-                        color="error"
-                        onClick={() => {
-                          setSelectedId(item.id);
-                          setOpenDelete(true);
-                        }}
-                        size="small"
-                      >
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
+                      {canWritePedagogie && (
+                        <IconButton
+                          color="primary"
+                          onClick={() => handleOpenDialog(item)}
+                          size="small"
+                        >
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      )}
+                      {canWritePedagogie && (
+                        <IconButton
+                          color="error"
+                          onClick={() => {
+                            setSelectedId(item.id);
+                            setOpenDelete(true);
+                          }}
+                          size="small"
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

@@ -53,6 +53,7 @@ import html2canvas from "html2canvas";
 import ImportExportModal from "../../../components/importExport/ImportExportModal";
 import TableSkeleton from "../../../components/common/TableSkeleton";
 import ErrorState from "../../../components/common/ErrorState";
+import { useUserPermissions } from "../../../utils/permissions";
 
 const JOURS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
 const HOURS = Array.from({ length: 11 }, (_, i) => i + 8); // 8h to 18h
@@ -70,6 +71,8 @@ const initialForm = {
 };
 
 export default function SchedulePage() {
+  const { canWrite } = useUserPermissions();
+  const canWritePedagogie = canWrite('can_manage_pedagogie');
   const [schedules, setSchedules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -684,13 +687,15 @@ export default function SchedulePage() {
           >
             Import / Export
           </Button>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => handleOpenDialog()}
-          >
-            Nouveau Créneau
-          </Button>
+          {canWritePedagogie && (
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => handleOpenDialog()}
+            >
+              Nouveau Créneau
+            </Button>
+          )}
         </Box>
       </Box>
 

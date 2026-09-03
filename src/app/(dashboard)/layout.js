@@ -7,6 +7,7 @@ import Header from '../../components/layout/Header';
 import { useRouter, usePathname } from 'next/navigation';
 import { AcademicYearProvider } from '../../context/AcademicYearContext';
 import { SidebarProvider, useSidebar } from '../../context/SidebarContext';
+import { hasReadAccess } from '../../utils/permissions';
 
 const ROUTE_PERMISSION_MAP = {
   '/students': 'can_manage_etudiants',
@@ -39,7 +40,7 @@ function isRoutePermitted(pathname) {
 
     if (ADMIN_ONLY_ROUTES.some(r => pathname.startsWith(r))) return false;
 
-    const hasAccess = (perm) => perm === 'lecture' || perm === 'ecriture' || perm === true;
+    const hasAccess = (perm) => hasReadAccess(perm);
 
     for (const [route, permission] of Object.entries(ROUTE_PERMISSION_MAP)) {
       if (pathname.startsWith(route)) {

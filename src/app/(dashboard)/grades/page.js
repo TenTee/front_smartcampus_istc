@@ -75,6 +75,7 @@ import {
   getEntityImportConfig,
   downloadXlsxWorkbook,
 } from "../../../utils/importExportUtils";
+import { getStoredPermissions, hasReadAccess, hasWriteAccess } from "../../../utils/permissions";
 
 const premiumStyles = {
   container: { p: 4, bgcolor: "#f8fafc", minHeight: "100vh" },
@@ -142,6 +143,9 @@ export default function GradesPage() {
   const [openModal, setOpenModal] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
   const { selectedYear } = useAcademicYear();
+  const permissions = getStoredPermissions();
+  const canReadGrades = hasReadAccess(permissions.can_manage_pedagogie) || hasReadAccess(permissions.can_manage_etudiants);
+  const canWriteGrades = hasWriteAccess(permissions.can_manage_pedagogie) || hasWriteAccess(permissions.can_manage_etudiants);
   const [selectedNote, setSelectedNote] = useState(null);
 
   const [selectedStudentForTranscript, setSelectedStudentForTranscript] =
@@ -453,6 +457,10 @@ export default function GradesPage() {
   };
 
   const handleBatchSave = async () => {
+    if (!canWriteGrades) {
+      setToast({ open: true, message: "Accès en lecture seule : vous ne pouvez pas enregistrer des notes.", severity: "warning" });
+      return;
+    }
     setSubmitting(true);
     try {
       const payload = {
@@ -491,6 +499,10 @@ export default function GradesPage() {
   };
 
   const handleBatchValidate = async (valider = true) => {
+    if (!canWriteGrades) {
+      setToast({ open: true, message: "Accès en lecture seule : vous ne pouvez pas valider des notes.", severity: "warning" });
+      return;
+    }
     const noteIds = batchData
       .filter((item) => item.note_id)
       .map((item) => item.note_id);
@@ -634,6 +646,10 @@ const handleBatchInputChange = (index, field, value) => {
   setBatchData(newData);
 };
   const handleSave = async () => {
+    if (!canWriteGrades) {
+      setToast({ open: true, message: "Accès en lecture seule : vous ne pouvez pas modifier cette note.", severity: "warning" });
+      return;
+    }
     if (!validateForm()) return;
     setSubmitting(true);
     try {
@@ -686,6 +702,11 @@ const handleBatchInputChange = (index, field, value) => {
   };
 
   const handleDelete = async () => {
+    if (!canWriteGrades) {
+      setToast({ open: true, message: "Accès en lecture seule : vous ne pouvez pas supprimer cette note.", severity: "warning" });
+      setOpenDelete(false);
+      return;
+    }
     if (!selectedNote) return;
     try {
       await notesService.remove(selectedNote.id);
@@ -805,15 +826,27 @@ const handleBatchInputChange = (index, field, value) => {
     return (total / items.length).toFixed(2);
   };
 
+  if (!canReadGrades) {
+    return (
+      <Box sx={{ p: 4 }}>
+        <Alert severity="info">
+          Vous avez un accès en lecture seule sur ce module. Vous pouvez consulter les données et les exporter, mais pas modifier les notes.
+        </Alert>
+      </Box>
+    );
+  }
+
   return (
     <Box sx={premiumStyles.container} className="grades-page">
       {/* <Box sx={premiumStyles.header} className="no-print">
         <Typography variant="h4" sx={premiumStyles.title}>Gestion des Notes</Typography>
         
         <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-          <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={() => { setForm(initialForm); setFormErrors({}); setOpenModal(true); }} sx={{ ...premiumStyles.actionBtn, bgcolor: '#4f46e5' }}>
-            Ajouter une Note
-          </Button>
+          {canWriteGrades && (
+            <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={() => { setForm(initialForm); setFormErrors({}); setOpenModal(true); }} sx={{ ...premiumStyles.actionBtn, bgcolor: '#4f46e5' }}>
+              Ajouter une Note
+            </Button>
+          )}
         </Box>
       </Box> */}
 
@@ -955,38 +988,44 @@ const handleBatchInputChange = (index, field, value) => {
                   >
                     Exporter par Module
                   </Button>
-                  <Button
-                    variant="contained"
-                    color="success"
-                    startIcon={<SaveIcon />}
-                    onClick={handleBatchSave}
-                    disabled={submitting}
-                    sx={premiumStyles.actionBtn}
-                  >
-                    {submitting ? "Enregistrement..." : "Enregistrer tout"}
-                  </Button>
-                  <Button
-                    variant="contained"
-                    startIcon={<VerifiedIcon />}
-                    onClick={() => handleBatchValidate(true)}
-                    disabled={validating || !batchData.length}
-                    sx={{ ...premiumStyles.actionBtn, bgcolor: "#16a34a" }}
-                  >
-                    {validating ? "Validation..." : "Valider les notes"}
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    startIcon={<VerifiedUserIcon />}
-                    onClick={() => handleBatchValidate(false)}
-                    disabled={validating || !batchData.length}
-                    sx={{
-                      ...premiumStyles.actionBtn,
-                      color: "#f59e0b",
-                      borderColor: "#fcd34d",
-                    }}
-                  >
-                    Dévalider
-                  </Button>
+                  {canWriteGrades && (
+                    <Button
+                      variant="contained"
+                      color="success"
+                      startIcon={<SaveIcon />}
+                      onClick={handleBatchSave}
+                      disabled={submitting}
+                      sx={premiumStyles.actionBtn}
+                    >
+                      {submitting ? "Enregistrement..." : "Enregistrer tout"}
+                    </Button>
+                  )}
+                  {canWriteGrades && (
+                    <Button
+                      variant="contained"
+                      startIcon={<VerifiedIcon />}
+                      onClick={() => handleBatchValidate(true)}
+                      disabled={validating || !batchData.length}
+                      sx={{ ...premiumStyles.actionBtn, bgcolor: "#16a34a" }}
+                    >
+                      {validating ? "Validation..." : "Valider les notes"}
+                    </Button>
+                  )}
+                  {canWriteGrades && (
+                    <Button
+                      variant="outlined"
+                      startIcon={<VerifiedUserIcon />}
+                      onClick={() => handleBatchValidate(false)}
+                      disabled={validating || !batchData.length}
+                      sx={{
+                        ...premiumStyles.actionBtn,
+                        color: "#f59e0b",
+                        borderColor: "#fcd34d",
+                      }}
+                    >
+                      Dévalider
+                    </Button>
+                  )}
                 </Box>
               </Box>
 

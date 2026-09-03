@@ -25,6 +25,7 @@ import { routes, bottomRoutes } from '../../config/routes';
 import { ConfigContext } from '../../theme/ThemeRegistry';
 import { getMediaUrl } from '../../services/api/client';
 import { useSidebar } from '../../context/SidebarContext';
+import { hasReadAccess } from '../../utils/permissions';
 
 const EXPANDED_WIDTH = 260;
 const COLLAPSED_WIDTH = 70;
@@ -106,7 +107,7 @@ export default function Sidebar() {
 
     if (route.label === 'Tableau de bord') return true;
 
-    const hasAccess = (perm) => perm === 'lecture' || perm === 'ecriture' || perm === true;
+    const hasAccess = (perm) => hasReadAccess(perm);
 
     if (Object.keys(perms).length > 0) {
       if (route.label === 'Étudiants') return hasAccess(perms.can_manage_etudiants);

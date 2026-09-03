@@ -64,6 +64,7 @@ import { formatDate } from '../../../../utils/formatters';
 import PaymentModal from '../../../../components/finances/PaymentModal';
 import AddInscriptionModal from '../../../../components/finances/AddInscriptionModal';
 import { useAcademicYear } from '../../../../context/AcademicYearContext';
+import { useUserPermissions } from '../../../../utils/permissions';
 
 function toList(data) {
   return Array.isArray(data) ? data : data?.results || [];
@@ -97,6 +98,8 @@ const initialFraisForm = {
 };
 
 export default function ScolaritePage() {
+  const { canWrite } = useUserPermissions();
+  const canWriteFinance = canWrite('can_manage_finance');
   const [currentTab, setCurrentTab] = useState(0);
   const { selectedYear } = useAcademicYear();
 
@@ -341,12 +344,12 @@ export default function ScolaritePage() {
         <Typography variant="h5" fontWeight="bold" color="primary">
           Scolarité
         </Typography>
-        {currentTab === 1 && (
+        {currentTab === 1 && canWriteFinance && (
           <Button variant="contained" color="primary" startIcon={<AddCircleOutlineIcon />} onClick={openInscriptionForm}>
             Nouvelle inscription
           </Button>
         )}
-        {currentTab === 2 && (
+        {currentTab === 2 && canWriteFinance && (
           <Box sx={{ display: 'flex', gap: 2 }}>
             <Button variant="outlined" color="success" startIcon={<AddIcon />} onClick={() => setOpenQuickConfig(true)}>Config. Rapide</Button>
           </Box>
@@ -611,7 +614,7 @@ export default function ScolaritePage() {
                       <Chip label={paymentStateLabel(item)} color={paymentStateColor(item)} size="small" />
                     </TableCell>
                     <TableCell align="right">
-                      {(Number(item.solde_restant) || 0) > 0 && (
+                      {canWriteFinance && (Number(item.solde_restant) || 0) > 0 && (
                         <Button size="small" variant="outlined" color="primary" startIcon={<AddCardIcon />} onClick={() => openPaymentForRow(item)}>
                           Payer
                         </Button>
@@ -731,8 +734,12 @@ export default function ScolaritePage() {
                     <TableCell>{item.obligatoire ? 'Oui' : 'Non'}</TableCell>
                     <TableCell>{item.date_echeance ? formatDate(item.date_echeance) : '-'}</TableCell>
                     <TableCell align="right">
-                      <IconButton size="small" color="primary" onClick={() => { setIsEditingFrais(true); setSelectedFrais(item); setFormFrais({ libelle: item.libelle, montant: item.montant, classe: item.classe_id || item.classe, obligatoire: item.obligatoire, date_echeance: item.date_echeance || '' }); setOpenFraisForm(true); }}><EditIcon fontSize="small" /></IconButton>
-                      <IconButton size="small" color="error" onClick={() => confirmDelete(item)}><DeleteIcon fontSize="small" /></IconButton>
+                      {canWriteFinance && (
+                        <IconButton size="small" color="primary" onClick={() => { setIsEditingFrais(true); setSelectedFrais(item); setFormFrais({ libelle: item.libelle, montant: item.montant, classe: item.classe_id || item.classe, obligatoire: item.obligatoire, date_echeance: item.date_echeance || '' }); setOpenFraisForm(true); }}><EditIcon fontSize="small" /></IconButton>
+                      )}
+                      {canWriteFinance && (
+                        <IconButton size="small" color="error" onClick={() => confirmDelete(item)}><DeleteIcon fontSize="small" /></IconButton>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

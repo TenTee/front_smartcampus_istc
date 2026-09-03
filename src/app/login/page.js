@@ -16,7 +16,6 @@ import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import AccountCircleOutlined from "@mui/icons-material/AccountCircleOutlined";
 import LockOutlined from "@mui/icons-material/LockOutlined";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -359,23 +358,6 @@ export default function LoginPage() {
               ) : (
                 "Se connecter"
               )}
-            </Button>
-
-            <Button
-              component={Link}
-              href="/preinscription"
-              fullWidth
-              variant="outlined"
-              size="large"
-              sx={{
-                mt: 2,
-                py: 1.4,
-                fontSize: "0.98rem",
-                fontWeight: 700,
-                borderRadius: 2,
-              }}
-            >
-              Faire une pré-inscription
             </Button>
           </form>
         </Paper>
