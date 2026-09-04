@@ -359,6 +359,22 @@ export default function LoginPage() {
                 "Se connecter"
               )}
             </Button>
+
+            <Button
+              fullWidth
+              variant="outlined"
+              size="large"
+              onClick={() => router.push("/preinscription")}
+              sx={{
+                mt: 1.5,
+                py: 1.3,
+                fontSize: "0.95rem",
+                fontWeight: 700,
+                borderRadius: 2,
+              }}
+            >
+              Pré-inscription
+            </Button>
           </form>
         </Paper>
       </Box>
