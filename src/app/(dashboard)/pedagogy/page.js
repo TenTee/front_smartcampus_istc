@@ -33,10 +33,10 @@ import {
   Business as UniversityIcon,
   AccountTree as DepartmentIcon,
   School as FiliereIcon,
+  Category as SpecialiteIcon,
   DateRange as YearIcon,
   Class as ClassIcon,
   Layers as LevelIcon,
-  Loop as CycleIcon,
   MeetingRoom as RoomIcon,
 } from '@mui/icons-material';
 import {
@@ -46,8 +46,8 @@ import {
   domainesService,
   facultesService,
   filieresV2Service,
+  specialitesService,
   levelsV2Service,
-  semestresService,
   cycleGlobalsService,
   sallesService,
 } from '../../../services/api/services';
@@ -73,19 +73,21 @@ export default function PedagogyPage() {
   const [universities, setUniversities] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [filieres, setFilieres] = useState([]);
+  const [specialites, setSpecialites] = useState([]);
   const [cycles, setCycles] = useState([]);
   const [levels, setLevels] = useState([]);
   const [academicYears, setAcademicYears] = useState([]);
   const [cycleGlobals, setCycleGlobals] = useState([]);
 
   const [formData, setFormData] = useState({});
-// Tabs: 0=Universités, 1=Départements, 2=Filières, 3=Niveaux(auto), 4=Classes(auto), 5=Années Académiques, 6=Salles
-  // Niveaux (3) et Classes (4) sont créés automatiquement lors de la création d'une filière
-  const canAdd = ![3, 4].includes(tabValue);
+  // Tabs: 0=Universités, 1=Départements, 2=Filières, 3=Spécialités, 4=Niveaux(auto), 5=Classes(auto), 6=Années Académiques, 7=Salles
+  // Niveaux (4) et Classes (5) sont créés automatiquement lors de la création d'une spécialité
+  const canAdd = ![4, 5].includes(tabValue);
   const tabs = [
     { label: 'Universités', icon: <UniversityIcon fontSize="small" />, service: facultesService },
     { label: 'Départements', icon: <DepartmentIcon fontSize="small" />, service: domainesService },
     { label: 'Filières', icon: <FiliereIcon fontSize="small" />, service: filieresV2Service },
+    { label: 'Spécialités', icon: <SpecialiteIcon fontSize="small" />, service: specialitesService },
     { label: 'Niveaux', icon: <LevelIcon fontSize="small" />, service: levelsV2Service },
     { label: 'Classes', icon: <ClassIcon fontSize="small" />, service: classesService },
     { label: 'Années Académiques', icon: <YearIcon fontSize="small" />, service: anneesAcademiquesService },
@@ -94,10 +96,11 @@ export default function PedagogyPage() {
 
   const fetchDependencyData = async () => {
     try {
-      const [univs, depts, fils, cycs, lvls, years, cycleGlobalsData] = await Promise.all([
+      const [univs, depts, fils, specs, cycs, lvls, years, cycleGlobalsData] = await Promise.all([
         facultesService.list(),
         domainesService.list(),
         filieresV2Service.list(),
+        specialitesService.list(),
         cyclesService.list(),
         levelsV2Service.list(),
         anneesAcademiquesService.list(),
@@ -106,6 +109,7 @@ export default function PedagogyPage() {
       setUniversities(toList(univs));
       setDepartments(toList(depts));
       setFilieres(toList(fils));
+      setSpecialites(toList(specs));
       setCycles(toList(cycs));
       setLevels(toList(lvls));
       setAcademicYears(toList(years));
@@ -150,27 +154,27 @@ export default function PedagogyPage() {
     setOpenDialog(true);
   };
 
-const handleSave = async () => {
+  const handleSave = async () => {
     try {
       const currentTab = tabs[tabValue];
       if (dialogMode === 'add') {
-        if (tabValue === 2) {
-          // Création filière : le backend crée automatiquement Cycle + Niveaux + Classes
-          // Le payload doit contenir : departement, nom, type_cycle (id CycleGlobal), nombre_niveaux
-          const filiereRes = await filieresV2Service.create(formData);
-          const filiereData = filiereRes?.id ? filiereRes : filiereRes?.data || filiereRes;
+        if (tabValue === 3) {
+          // Création spécialité : le backend crée automatiquement Cycle + Niveaux + Classes
+          // Le payload contient : filiere, nom, type_cycle (id CycleGlobal), nombre_niveaux, code, responsable_nom
+          const specRes = await specialitesService.create(formData);
+          const specData = specRes?.id ? specRes : specRes?.data || specRes;
 
-          // Basculer vers l'onglet Classes (index 4) pour montrer les classes auto-créées
-          const classesRes = await classesService.list({ filiere: filiereData.id });
+          // Basculer vers l'onglet Classes (index 5) pour montrer les classes auto-créées
+          const classesRes = await classesService.list({ specialite: specData.id });
           const classesList = Array.isArray(classesRes) ? classesRes : classesRes?.results || [];
-          setTabValue(4); // ← onglet Classes
+          setTabValue(5); // ← onglet Classes
           setData(classesList);
 
           const nb = formData.nombre_niveaux || 0;
           const cycleNom = cycleGlobals.find(c => c.id === formData.type_cycle)?.nom || 'cycle';
           setToast({
             open: true,
-            message: `Filière créée avec succès ! ${nb} niveau(x) et ${classesList.length} classe(s) ${cycleNom} générés automatiquement.`,
+            message: `Spécialité créée avec succès ! ${nb} niveau(x) et ${classesList.length} classe(s) ${cycleNom} générés automatiquement.`,
             severity: 'success',
           });
         } else {
@@ -209,7 +213,6 @@ const handleSave = async () => {
       });
     }
   };
-  
 
   const renderFormFields = () => {
     switch (tabValue) {
@@ -227,19 +230,30 @@ const handleSave = async () => {
             <TextField select fullWidth margin="dense" label="Université" value={formData.universite_tutelle || ''} onChange={(e) => setFormData({ ...formData, universite_tutelle: e.target.value })}>
               {universities.map((u) => <MenuItem key={u.id} value={u.id}>{u.nom}</MenuItem>)}
             </TextField>
-            <TextField fullWidth margin="dense" label="Nom" value={formData.nom || ''} onChange={(e) => setFormData({ ...formData, nom: e.target.value })} />
+            <TextField fullWidth margin="dense" label="Nom du département" value={formData.nom || ''} onChange={(e) => setFormData({ ...formData, nom: e.target.value })} />
             <TextField fullWidth margin="dense" label="Code" value={formData.code || ''} onChange={(e) => setFormData({ ...formData, code: e.target.value })} />
           </>
         );
-      case 2: // Filières — crée automatiquement Cycle + Niveaux + Classes
+      case 2: // Filières
+        return (
+          <>
+            <TextField select fullWidth margin="dense" label="Département" value={formData.departement || ''} onChange={(e) => setFormData({ ...formData, departement: e.target.value })}>
+              {departments.map((d) => <MenuItem key={d.id} value={d.id}>{d.nom}</MenuItem>)}
+            </TextField>
+            <TextField fullWidth margin="dense" label="Nom de la filière (ex: Génie Informatique)" value={formData.nom || ''} onChange={(e) => setFormData({ ...formData, nom: e.target.value })} />
+            <TextField fullWidth margin="dense" label="Code" value={formData.code || ''} onChange={(e) => setFormData({ ...formData, code: e.target.value })} />
+            <TextField fullWidth margin="dense" label="Nom du responsable" value={formData.responsable_nom || ''} onChange={(e) => setFormData({ ...formData, responsable_nom: e.target.value })} />
+          </>
+        );
+      case 3: // Spécialités — crée automatiquement Cycle + Niveaux + Classes
         return (
           <>
             <Alert severity="info" sx={{ mb: 1, fontSize: '0.82rem' }}>
-              En créant une filière avec un type de cycle et un nombre de niveaux, les <strong>niveaux</strong> et <strong>classes</strong> correspondants seront générés <strong>automatiquement</strong>.<br />
-              Ex : Filière &quot;Informatique&quot; + Cycle &quot;Licence&quot; + 3 niveaux → classes <em>Informatique Licence 1</em>, <em>Informatique Licence 2</em>, <em>Informatique Licence 3</em>.
+              En créant une spécialité avec un type de cycle et un nombre de niveaux, les <strong>niveaux</strong> et <strong>classes</strong> correspondants seront générés <strong>automatiquement</strong>.<br />
+              Ex : Filière &quot;Informatique&quot; + Spécialité &quot;Développement Web&quot; + Cycle &quot;Licence&quot; + 3 niveaux → classes <em>Développement Web Licence 1</em>, <em>2</em>, <em>3</em>.
             </Alert>
-            <TextField select fullWidth margin="dense" label="Département" value={formData.departement || ''} onChange={(e) => setFormData({ ...formData, departement: e.target.value })}>
-              {departments.map((d) => <MenuItem key={d.id} value={d.id}>{d.nom}</MenuItem>)}
+            <TextField select fullWidth margin="dense" label="Filière" value={formData.filiere || ''} onChange={(e) => setFormData({ ...formData, filiere: e.target.value })}>
+              {filieres.map((f) => <MenuItem key={f.id} value={f.id}>{f.nom}</MenuItem>)}
             </TextField>
             <TextField select fullWidth margin="dense" label="Type de Cycle (ex: Licence, BTS, Master)" value={formData.type_cycle || ''} onChange={(e) => {
               const cg = cycleGlobals.find(c => c.id === e.target.value);
@@ -254,13 +268,13 @@ const handleSave = async () => {
               value={formData.nombre_niveaux || ''}
               onChange={(e) => setFormData({ ...formData, nombre_niveaux: Number(e.target.value) })}
             />
-            <TextField fullWidth margin="dense" label="Nom de la filière (ex: Informatique)" value={formData.nom || ''} onChange={(e) => setFormData({ ...formData, nom: e.target.value })} />
+            <TextField fullWidth margin="dense" label="Nom de la spécialité (ex: Développement Web)" value={formData.nom || ''} onChange={(e) => setFormData({ ...formData, nom: e.target.value })} />
             <TextField fullWidth margin="dense" label="Code" value={formData.code || ''} onChange={(e) => setFormData({ ...formData, code: e.target.value })} />
             <TextField fullWidth margin="dense" label="Nom du responsable" value={formData.responsable_nom || ''} onChange={(e) => setFormData({ ...formData, responsable_nom: e.target.value })} />
           </>
         );
-      // case 3 (Niveaux) et case 4 (Classes) : lecture seule, pas de formulaire d'ajout
-      case 5: // Années Académiques
+      // case 4 (Niveaux) et case 5 (Classes) : lecture seule, pas de formulaire d'ajout direct
+      case 6: // Années Académiques
         return (
           <>
             <TextField fullWidth margin="dense" label="Libellé (ex: 2024-2025)" value={formData.libelle || ''} onChange={(e) => setFormData({ ...formData, libelle: e.target.value })} />
@@ -272,7 +286,7 @@ const handleSave = async () => {
             </TextField>
           </>
         );
-      case 6: // Salles
+      case 7: // Salles
         return (
           <>
             <TextField fullWidth required margin="dense" label="Nom de la salle" value={formData.nom || ''} onChange={(e) => setFormData({ ...formData, nom: e.target.value })} />
@@ -289,11 +303,12 @@ const handleSave = async () => {
     switch (tabValue) {
       case 0: return [ 'Nom', 'Code', 'Actions'];
       case 1: return [ 'Université', 'Nom', 'Code', 'Actions'];
-      case 2: return [ 'Département', 'Cycle', 'Nom', 'Nb Niveaux', 'Code', 'Responsable', 'Actions'];
-      case 3: return [ 'Filière', 'Cycle', 'Nom', 'Ordre'];
-      case 4: return [ 'Nom de la classe', 'Filière', 'Cycle', 'Niveau', 'Année'];
-      case 5: return [ 'Libellé', 'Début', 'Fin', 'Active', 'Actions'];
-      case 6: return [ 'Nom de la salle', 'Capacité', 'Description', 'Actions'];
+      case 2: return [ 'Département', 'Nom de la filière', 'Code', 'Responsable', 'Actions'];
+      case 3: return [ 'Filière', 'Cycle', 'Nom de la spécialité', 'Nb Niveaux', 'Code', 'Responsable', 'Actions'];
+      case 4: return [ 'Spécialité / Filière', 'Cycle', 'Nom', 'Ordre'];
+      case 5: return [ 'Nom de la classe', 'Spécialité', 'Filière', 'Cycle', 'Niveau', 'Année'];
+      case 6: return [ 'Libellé', 'Début', 'Fin', 'Active', 'Actions'];
+      case 7: return [ 'Nom de la salle', 'Capacité', 'Description', 'Actions'];
       default: return [];
     }
   };
@@ -305,9 +320,9 @@ const handleSave = async () => {
           Structure Académique
         </Typography>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          {(tabValue === 3 || tabValue === 4) && (
+          {(tabValue === 4 || tabValue === 5) && (
             <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
-              {tabValue === 3 ? '🔒 Niveaux générés automatiquement via les filières' : '🔒 Classes générées automatiquement via les filières'}
+              {tabValue === 4 ? '🔒 Niveaux générés automatiquement via les spécialités' : '🔒 Classes générées automatiquement via les spécialités'}
             </Typography>
           )}
           {canWritePedagogie && canAdd && (
@@ -347,16 +362,15 @@ const handleSave = async () => {
             ) : data.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={10} align="center" sx={{ py: 5 }}>
-                  {tabValue === 3
-                    ? 'Aucun niveau trouvé. Les niveaux sont créés automatiquement lors de la création d\'une filière.'
-                    : tabValue === 4
-                    ? 'Aucune classe trouvée. Les classes sont créées automatiquement lors de la création d\'une filière.'
+                  {tabValue === 4
+                    ? 'Aucun niveau trouvé. Les niveaux sont créés automatiquement lors de la création d\'une spécialité.'
+                    : tabValue === 5
+                    ? 'Aucune classe trouvée. Les classes sont créées automatiquement lors de la création d\'une spécialité.'
                     : 'Aucun élément trouvé.'}
                 </TableCell>
               </TableRow>
             ) : data.map((item) => (
               <TableRow key={item.id} hover>
-   
                 {tabValue === 0 && (
                   <>
                     <TableCell sx={{ fontWeight: 500 }}>{item.nom}</TableCell>
@@ -373,6 +387,14 @@ const handleSave = async () => {
                 {tabValue === 2 && (
                   <>
                     <TableCell>{item.departement_nom || item.departement?.nom || '-'}</TableCell>
+                    <TableCell sx={{ fontWeight: 500 }}>{item.nom}</TableCell>
+                    <TableCell>{item.code}</TableCell>
+                    <TableCell>{item.responsable_nom || '-'}</TableCell>
+                  </>
+                )}
+                {tabValue === 3 && (
+                  <>
+                    <TableCell>{item.filiere_nom || item.filiere?.nom || '-'}</TableCell>
                     <TableCell>{item.cycle_nom || item.cycle?.nom || '-'}</TableCell>
                     <TableCell sx={{ fontWeight: 500 }}>{item.nom}</TableCell>
                     <TableCell>
@@ -382,26 +404,27 @@ const handleSave = async () => {
                     <TableCell>{item.responsable_nom || '-'}</TableCell>
                   </>
                 )}
-                {/* Niveaux (tab 3) — lecture seule, créés automatiquement */}
-                {tabValue === 3 && (
+                {/* Niveaux (tab 4) — lecture seule, créés automatiquement */}
+                {tabValue === 4 && (
                   <>
-                    <TableCell>{item.filiere_nom || '-'}</TableCell>
+                    <TableCell>{item.specialite_nom || item.filiere_nom || '-'}</TableCell>
                     <TableCell>{item.cycle_nom || '-'}</TableCell>
                     <TableCell sx={{ fontWeight: 500 }}>{item.nom}</TableCell>
                     <TableCell>{item.ordre}</TableCell>
                   </>
                 )}
-                {/* Classes (tab 4) — lecture seule, créées automatiquement */}
-                {tabValue === 4 && (
+                {/* Classes (tab 5) — lecture seule, créées automatiquement */}
+                {tabValue === 5 && (
                   <>
                     <TableCell sx={{ fontWeight: 600, color: 'primary.main' }}>{item.nom}</TableCell>
+                    <TableCell>{item.specialite_nom || item.specialite?.nom || '-'}</TableCell>
                     <TableCell>{item.filiere_nom || item.filiere?.nom || '-'}</TableCell>
                     <TableCell>{item.cycle_nom || item.cycle?.nom || '-'}</TableCell>
                     <TableCell>{item.niveau_nom || item.niveau?.nom || '-'}</TableCell>
                     <TableCell>{item.annee_academique_libelle || item.annee_academique?.libelle || '-'}</TableCell>
                   </>
                 )}
-                {tabValue === 5 && (
+                {tabValue === 6 && (
                   <>
                     <TableCell sx={{ fontWeight: 500 }}>{item.libelle}</TableCell>
                     <TableCell>{item.date_debut || '-'}</TableCell>
@@ -411,7 +434,7 @@ const handleSave = async () => {
                     </TableCell>
                   </>
                 )}
-                {tabValue === 6 && (
+                {tabValue === 7 && (
                   <>
                     <TableCell sx={{ fontWeight: 500 }}>{item.nom}</TableCell>
                     <TableCell>{item.capacite || '-'}</TableCell>
@@ -419,7 +442,7 @@ const handleSave = async () => {
                   </>
                 )}
                 {/* Boutons Actions : masqués pour Niveaux et Classes (auto-gérés) */}
-                {![3, 4].includes(tabValue) && canWritePedagogie && (
+                {![4, 5].includes(tabValue) && canWritePedagogie && (
                   <TableCell align="right">
                     <IconButton color="primary" size="small" onClick={() => handleOpenDialog(item)}><EditIcon fontSize="small" /></IconButton>
                     <IconButton color="error" size="small" onClick={() => handleDelete(item.id)}><DeleteIcon fontSize="small" /></IconButton>

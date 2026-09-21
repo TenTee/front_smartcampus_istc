@@ -48,13 +48,18 @@ function loadRecaptcha() {
 }
 
 export default function RecaptchaV2({
-  siteKey,
+  siteKey: siteKeyProp,
   onChange,
   theme = "light",
   size = "normal",
   tabindex = 0,
   sx,
 }) {
+  const siteKey =
+    siteKeyProp ||
+    process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY ||
+    "6LdDvWstAAAAAG87XCrn9ISoPwfAhk3jD6EE67qD";
+
   const containerRef = useRef(null);
   const widgetIdRef = useRef(null);
   const onChangeRef = useRef(onChange);

@@ -1,18 +1,19 @@
 import axios from 'axios';
 
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000/';
+export const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000/').replace(/\/$/, '');
 
 export function getMediaUrl(path) {
   if (!path) return null;
   if (path.startsWith('http://')) return path.replace('http://', 'https://');
   if (path.startsWith('http')) return path;
-  return `${API_BASE_URL.replace(/\/$/, '')}${path.startsWith('/') ? '' : '/'}${path}`;
+  return `${API_BASE_URL}${path.startsWith('/') ? '' : '/'}${path}`;
 }
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
   timeout: 15000,
 });
+
 
 apiClient.interceptors.request.use((config) => {
   if (typeof window !== 'undefined') {
@@ -49,10 +50,13 @@ apiClient.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    if (
+    const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
+    const isPublicPage =
       typeof window === 'undefined' ||
-      window.location.pathname.startsWith('/login')
-    ) {
+      pathname.startsWith('/login') ||
+      pathname.startsWith('/preinscription');
+
+    if (isPublicPage) {
       return Promise.reject(error);
     }
 
@@ -109,7 +113,7 @@ apiClient.interceptors.response.use(
 
     if (
       error.response?.status === 403 &&
-      !window.location.pathname.startsWith('/login')
+      !isPublicPage
     ) {
       localStorage.removeItem('token');
       localStorage.removeItem('refreshToken');
@@ -173,17 +177,23 @@ export async function apiRequest(config) {
     const response = await apiClient.request(config);
     return response.data;
   } catch (error) {
-    try {
-      const base = (apiClient.defaults && apiClient.defaults.baseURL) || '';
-      const url = `${base}${config && config.url ? config.url : ''}`;
-      console.error('API request failed:', {
-        url,
-        method: config && config.method ? config.method : 'GET',
-        message: error?.message,
-        isAxiosError: error?.isAxiosError,
-      });
-    } catch (e) {
-      console.error('API request failed (error computing URL):', e);
+    const shouldIgnoreAuthError = [401, 403].includes(error?.response?.status);
+
+    if (!shouldIgnoreAuthError) {
+      try {
+        const base = (apiClient.defaults && apiClient.defaults.baseURL) || '';
+        const path = config && config.url ? config.url : '';
+        const url = path.startsWith('http') ? path : `${base.replace(/\/$/, '')}${path.startsWith('/') ? '' : '/'}${path}`;
+        console.error('API request failed:', {
+          url,
+          method: config && config.method ? config.method : 'GET',
+          message: error?.message,
+          isAxiosError: error?.isAxiosError,
+          status: error?.response?.status,
+        });
+      } catch (e) {
+        console.error('API request failed (error computing URL):', e);
+      }
     }
     throw error;
   }

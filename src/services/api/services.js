@@ -8,8 +8,10 @@ function createCrudService(basePath) {
     create: (payload) => apiRequest({ url: basePath, method: 'POST', data: payload }),
     update: (id, payload) => apiRequest({ url: idPath(basePath, id), method: 'PUT', data: payload }),
     remove: (id) => apiRequest({ url: idPath(basePath, id), method: 'DELETE' }),
+    delete: (id) => apiRequest({ url: idPath(basePath, id), method: 'DELETE' }),
   };
 }
+
 
 export const authService = {
   login: (payload) => apiRequest({ url: API_ENDPOINTS.authLogin, method: 'POST', data: payload }),
@@ -255,3 +257,9 @@ export const campagnesService = {
 export const statistiquesPaieService = {
   get: (params) => apiRequest({ url: API_ENDPOINTS.paiesStatistiques, method: 'GET', params }),
 };
+
+export const boursesService = {
+  ...createCrudService(API_ENDPOINTS.bourses),
+  checkCode: (code) => apiRequest({ url: `${API_ENDPOINTS.bourses}check/`, method: 'GET', params: { code } }),
+};
+

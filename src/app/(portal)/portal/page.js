@@ -12,14 +12,20 @@ import {
   CircularProgress,
   Paper,
   Stack,
-  Button
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import SchoolIcon from '@mui/icons-material/School';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import GradeIcon from '@mui/icons-material/Grade';
+import BadgeIcon from '@mui/icons-material/Badge';
 import { etudiantsService } from '../../../services/api/services';
 import { useRouter } from 'next/navigation';
+import StudentCard from '../../../components/students/StudentCard';
 
 import { formatDate } from '../../../utils/formatters';
 
@@ -27,6 +33,7 @@ export default function StudentDashboard() {
   const [student, setStudent] = useState(null);
   const [situation, setSituation] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [openCardDialog, setOpenCardDialog] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -108,6 +115,15 @@ export default function StudentDashboard() {
                   </Box>
                 </Stack>
                 
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  startIcon={<BadgeIcon />}
+                  onClick={() => setOpenCardDialog(true)}
+                  sx={{ mt: 3, borderRadius: 3, textTransform: 'none', fontWeight: 600 }}
+                >
+                  Voir ma carte d'étudiant
+                </Button>
               </Box>
             </CardContent>
           </Card>
@@ -149,7 +165,7 @@ export default function StudentDashboard() {
               <Grid item xs={12} sm={6} key={index}>
                 <Paper 
                   elevation={0}
-                     onClick={() => router.push(item.link)}
+                  onClick={() => router.push(item.link)}
                   sx={{ 
                     p: 3, 
                     borderRadius: 4, 
@@ -189,6 +205,29 @@ export default function StudentDashboard() {
           </Card>
         </Grid>
       </Grid>
+
+      {/* Modal Consultation Carte d'Étudiant (Sans téléchargement) */}
+      <Dialog
+        open={openCardDialog}
+        onClose={() => setOpenCardDialog(false)}
+        maxWidth="md"
+      >
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>Ma Carte d'Étudiant Digitalisée</span>
+        </DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', p: 4, bgcolor: '#f0f2f5' }}>
+          <StudentCard student={student} flipable={true} />
+          <Typography variant="caption" color="text.secondary" sx={{ mt: 2, fontStyle: 'italic', textAlign: 'center' }}>
+            Document numérique d'identification réservé à la consultation. Pour obtenir une carte PVC officielle imprimée, veuillez vous adresser au secrétariat de l'établissement.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenCardDialog(false)} variant="contained" color="primary">
+            Fermer
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
+

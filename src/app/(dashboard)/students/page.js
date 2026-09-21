@@ -59,6 +59,8 @@ import { useUserPermissions } from "../../../utils/permissions";
 import {
   etudiantsService,
   filieresV2Service,
+  specialitesService,
+  cyclesService,
   levelsV2Service,
   classesService,
   facultesService,
@@ -71,6 +73,7 @@ import {
 import { getApiErrorMessage, getMediaUrl } from "../../../services/api/client";
 import { ConfigContext } from "../../../theme/ThemeRegistry";
 import CertificateScolariteTemplate from "../../../components/certificates/CertificateScolariteTemplate";
+import StudentCard from "../../../components/students/StudentCard";
 import * as XLSX from "xlsx";
 
 function toList(data) {
@@ -224,6 +227,8 @@ const initialForm = {
   nom_parent: "",
   whatsapp_parent: "",
   filiere: "",
+  specialite: "",
+  cycle: "",
   niveau: "",
   classe: "",
 };
@@ -254,6 +259,8 @@ export default function StudentsPage() {
     severity: "success",
   });
   const [filieres, setFilieres] = useState([]);
+  const [specialites, setSpecialites] = useState([]);
+  const [cycles, setCycles] = useState([]);
   const [facultes, setFacultes] = useState([]);
   const [levels, setLevels] = useState([]);
   const [classes, setClasses] = useState([]);
@@ -331,13 +338,17 @@ export default function StudentsPage() {
 
   const fetchAcademicData = async () => {
     try {
-      const [fils, lvls, clss, facs] = await Promise.all([
+      const [fils, specs, cycs, lvls, clss, facs] = await Promise.all([
         filieresV2Service.list(),
+        specialitesService.list(),
+        cyclesService.list(),
         levelsV2Service.list(),
         classesService.list(),
         facultesService.list(),
       ]);
       setFilieres(toList(fils));
+      setSpecialites(toList(specs));
+      setCycles(toList(cycs));
       setLevels(toList(lvls));
       setClasses(toList(clss));
       setFacultes(toList(facs));
@@ -535,20 +546,48 @@ export default function StudentsPage() {
     XLSX.writeFile(wb, "Liste_Etudiants_Filtree.xlsx");
   };
 
-  const downloadCardAsPdf = async () => {
-    const cardElement = document.getElementById("student-card-preview");
-    if (!cardElement) return;
+  const downloadCardAsPdf = async (mode = "both") => {
     try {
-      const canvas = await html2canvas(cardElement, {
-        scale: 2,
-        useCORS: true,
-      });
-      const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF("landscape", "mm", "credit-card"); // ~86x54mm
-      pdf.addImage(imgData, "PNG", 0, 0, 86, 54);
-      pdf.save(
-        `Carte_Etudiant_${cardStudent?.matricule || "SansMatricule"}.pdf`,
-      );
+      const frontEl = document.getElementById("student-card-preview-front-export");
+      const backEl = document.getElementById("student-card-preview-back-export");
+      const previewEl = document.getElementById("student-card-preview");
+
+      const pdf = new jsPDF("landscape", "mm", [85.6, 53.98]);
+
+      if (mode === "front" || mode === "both") {
+        const targetEl = frontEl || previewEl;
+        const canvasFront = await html2canvas(targetEl, {
+          scale: 3,
+          useCORS: true,
+          backgroundColor: "#ffffff",
+        });
+        const imgFront = canvasFront.toDataURL("image/png");
+        pdf.addImage(imgFront, "PNG", 0, 0, 85.6, 53.98);
+      }
+
+      if (mode === "back") {
+        const targetEl = backEl || previewEl;
+        const canvasBack = await html2canvas(targetEl, {
+          scale: 3,
+          useCORS: true,
+          backgroundColor: "#ffffff",
+        });
+        const imgBack = canvasBack.toDataURL("image/png");
+        pdf.addImage(imgBack, "PNG", 0, 0, 85.6, 53.98);
+      } else if (mode === "both") {
+        pdf.addPage([85.6, 53.98], "landscape");
+        const targetEl = backEl || previewEl;
+        const canvasBack = await html2canvas(targetEl, {
+          scale: 3,
+          useCORS: true,
+          backgroundColor: "#ffffff",
+        });
+        const imgBack = canvasBack.toDataURL("image/png");
+        pdf.addImage(imgBack, "PNG", 0, 0, 85.6, 53.98);
+      }
+
+      const suffix = mode === "front" ? "_Recto" : mode === "back" ? "_Verso" : "_Complet";
+      pdf.save(`Carte_Etudiant_${cardStudent?.matricule || "SansMatricule"}${suffix}.pdf`);
     } catch (error) {
       console.error("Erreur PDF:", error);
       setToast({
@@ -595,6 +634,15 @@ export default function StudentsPage() {
     setIsEditing(true);
     const latestInscription = student.inscriptions?.[0];
     const { indicatif, numero } = parseContactWithIndicatif(student.contact);
+
+    // Determine specialite and cycle from inscription data or levels
+    const niveauId = latestInscription?.niveau?.id || latestInscription?.niveau || "";
+    const niveauObj = levels.find((l) => Number(l.id) === Number(niveauId));
+    const cycleId = niveauObj?.cycle || "";
+    const cycleObj = cycles.find((c) => Number(c.id) === Number(cycleId));
+    const specialiteId = cycleObj?.specialite || niveauObj?.specialite_id || "";
+    const filiereId = student.filiere_details?.id || student.filiere?.id || student.filiere || "";
+
     setForm({
       id: student.id,
       matricule: student.matricule || "",
@@ -606,10 +654,12 @@ export default function StudentsPage() {
       nom_parent: student.nom_parent || "",
       whatsapp_parent: student.whatsapp_parent || "",
       filiere_details: student.filiere_details || null,
+      specialite: specialiteId ? Number(specialiteId) : "",
+      cycle: cycleId ? Number(cycleId) : "",
 
       inscriptions: [
         {
-          niveau: latestInscription?.niveau || "",
+          niveau: niveauId,
           classe: latestInscription?.classe || "",
         },
       ],
@@ -781,13 +831,20 @@ export default function StudentsPage() {
     try {
       // L'API attend "filiere_id" et non "filiere"
       const fullContact = `${form.indicatif} ${form.contact}`.trim();
+      const inscriptionData = form.inscriptions?.[0] || {};
       const payload = {
         ...form,
         contact: fullContact,
         filiere_id: form.filiere_details?.id,
       };
+      // Nettoyage des champs non-API
       delete payload.filiere;
       delete payload.indicatif;
+      delete payload.specialite;
+      delete payload.cycle;
+      delete payload.inscriptions;
+      delete payload.filiere_details;
+      delete payload.documents_existants;
 
       let studentId = form.id;
       if (isEditing) {
@@ -796,13 +853,15 @@ export default function StudentsPage() {
         const response = await etudiantsService.create(payload);
         studentId = response?.id || response?.results?.id;
 
-        // Création de l'inscription si une classe est sélectionnée
-        if (studentId && form.classe) {
+        // Création de l'inscription si un niveau est sélectionné
+        const classeId = inscriptionData.classe;
+        const niveauId = inscriptionData.niveau;
+        if (studentId && niveauId) {
           try {
             await inscriptionsV2Service.create({
               etudiant: studentId,
-              classe: form.classe,
-              niveau: form.niveau,
+              classe: classeId || undefined,
+              niveau: niveauId,
             });
           } catch (e) {
             console.error("Erreur lors de la création de l'inscription:", e);
@@ -1369,6 +1428,7 @@ export default function StudentsPage() {
                 Informations Académiques
               </Typography>
 
+              {/* Filière */}
               <FormControl
                 fullWidth
                 size="small"
@@ -1386,6 +1446,8 @@ export default function StudentsPage() {
                     setForm((prev) => ({
                       ...prev,
                       filiere_details: filiere || null,
+                      specialite: "",
+                      cycle: "",
                       inscriptions: [
                         {
                           ...(prev.inscriptions?.[0] || {}),
@@ -1414,6 +1476,7 @@ export default function StudentsPage() {
                 )}
               </FormControl>
 
+              {/* Spécialité */}
               <FormControl
                 fullWidth
                 size="small"
@@ -1422,14 +1485,109 @@ export default function StudentsPage() {
               >
                 <Select
                   displayEmpty
+                  value={form.specialite || ""}
+                  onChange={(e) => {
+                    const selectedSpecialite = Number(e.target.value);
+                    setForm((prev) => ({
+                      ...prev,
+                      specialite: selectedSpecialite,
+                      cycle: "",
+                      inscriptions: [
+                        {
+                          ...(prev.inscriptions?.[0] || {}),
+                          niveau: "",
+                          classe: "",
+                        },
+                      ],
+                    }));
+                  }}
+                >
+                  <MenuItem value="" disabled>
+                    Sélectionner une spécialité
+                  </MenuItem>
+
+                  {specialites
+                    .filter(
+                      (s) =>
+                        Number(s.filiere) ===
+                        Number(form.filiere_details?.id),
+                    )
+                    .map((s) => (
+                      <MenuItem key={s.id} value={s.id}>
+                        {s.nom}
+                      </MenuItem>
+                    ))}
+                </Select>
+              </FormControl>
+
+              {/* Cycle */}
+              <FormControl
+                fullWidth
+                size="small"
+                margin="dense"
+                disabled={!form.filiere_details?.id}
+              >
+                <Select
+                  displayEmpty
+                  value={form.cycle || ""}
+                  onChange={(e) => {
+                    const selectedCycle = Number(e.target.value);
+                    setForm((prev) => ({
+                      ...prev,
+                      cycle: selectedCycle,
+                      inscriptions: [
+                        {
+                          ...(prev.inscriptions?.[0] || {}),
+                          niveau: "",
+                          classe: "",
+                        },
+                      ],
+                    }));
+                  }}
+                >
+                  <MenuItem value="" disabled>
+                    Sélectionner un cycle
+                  </MenuItem>
+
+                  {cycles
+                    .filter((c) => {
+                      const matchFiliere =
+                        Number(c.filiere) ===
+                        Number(form.filiere_details?.id);
+                      if (form.specialite) {
+                        return (
+                          matchFiliere &&
+                          Number(c.specialite) ===
+                            Number(form.specialite)
+                        );
+                      }
+                      return matchFiliere;
+                    })
+                    .map((c) => (
+                      <MenuItem key={c.id} value={c.id}>
+                        {c.nom}
+                      </MenuItem>
+                    ))}
+                </Select>
+              </FormControl>
+
+              {/* Niveau */}
+              <FormControl
+                fullWidth
+                size="small"
+                margin="dense"
+                disabled={!form.cycle}
+              >
+                <Select
+                  displayEmpty
                   value={form.inscriptions?.[0]?.niveau || ""}
                   onChange={(e) => {
                     const selectedNiveau = Number(e.target.value);
 
                     const matchingClasse = classes.find(
-                      (c) =>
-                        Number(c.niveau?.id || c.niveau) === selectedNiveau &&
-                        Number(c.filiere?.id || c.filiere) ===
+                      (cl) =>
+                        Number(cl.niveau?.id || cl.niveau) === selectedNiveau &&
+                        Number(cl.filiere?.id || cl.filiere) ===
                           Number(form.filiere_details?.id),
                     );
 
@@ -1452,8 +1610,8 @@ export default function StudentsPage() {
                   {levels
                     .filter(
                       (l) =>
-                        Number(l.filiere_id) ===
-                        Number(form.filiere_details?.id),
+                        Number(l.cycle) ===
+                        Number(form.cycle),
                     )
                     .map((l) => (
                       <MenuItem key={l.id} value={l.id}>
@@ -1463,15 +1621,15 @@ export default function StudentsPage() {
                 </Select>
               </FormControl>
 
-              {form.classe && (
+              {form.inscriptions?.[0]?.classe && (
                 <Typography
                   variant="caption"
                   color="success.main"
                   sx={{ mt: 0.5, display: "block" }}
                 >
                   Classe attribuée automatiquement :{" "}
-                  {classes.find((c) => c.id === form.classe)?.nom ||
-                    form.classe}
+                  {classes.find((c) => c.id === form.inscriptions[0].classe)?.nom ||
+                    form.inscriptions[0].classe}
                 </Typography>
               )}
             </Grid>
@@ -2037,7 +2195,7 @@ export default function StudentsPage() {
       <Dialog
         open={openCardDialog}
         onClose={() => setOpenCardDialog(false)}
-        maxWidth="sm"
+        maxWidth="md"
       >
         <DialogTitle
           sx={{
@@ -2046,7 +2204,7 @@ export default function StudentsPage() {
             alignItems: "center",
           }}
         >
-          <span>Carte Étudiant</span>
+          <span>Carte Étudiant Officielle</span>
         </DialogTitle>
         <DialogContent
           sx={{
@@ -2057,160 +2215,39 @@ export default function StudentsPage() {
           }}
         >
           {cardStudent && (
-            <Box
+            <StudentCard
+              student={cardStudent}
+              config={config}
               id="student-card-preview"
-              sx={{
-                width: 325, // ~86mm
-                height: 204, // ~54mm
-                bgcolor: "white",
-                borderRadius: 2,
-                boxShadow: 3,
-                position: "relative",
-                overflow: "hidden",
-                display: "flex",
-                flexDirection: "column",
-                fontFamily: "sans-serif",
-              }}
-            >
-              {/* Header */}
-              <Box
-                sx={{
-                  bgcolor: primaryColor,
-                  color: "white",
-                  py: 1,
-                  px: 2,
-                  textAlign: "center",
-                }}
-              >
-                <Typography variant="subtitle2" fontWeight="bold">
-                  {schoolName.toUpperCase()}
-                </Typography>
-                <Typography variant="caption" sx={{ letterSpacing: 1 }}>
-                  CARTE D'ÉTUDIANT
-                </Typography>
-              </Box>
-
-              {/* Body */}
-              <Box sx={{ p: 2, display: "flex", gap: 2, flex: 1 }}>
-                {/* Photo Placeholder */}
-                <Box
-                  sx={{
-                    width: 70,
-                    height: 90,
-                    bgcolor: "grey.200",
-                    borderRadius: 1,
-                    border: "1px solid #ddd",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexShrink: 0,
-                    overflow: "hidden",
-                  }}
-                >
-                  {cardStudent.documents &&
-                  cardStudent.documents.find(
-                    (d) => d.type_document === "Photo",
-                  ) ? (
-                    <img
-                      src={
-                        cardStudent.documents.find(
-                          (d) => d.type_document === "Photo",
-                        ).fichier
-                      }
-                      alt="Photo"
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "cover",
-                      }}
-                    />
-                  ) : (
-                    <BadgeIcon sx={{ fontSize: 40, color: "grey.400" }} />
-                  )}
-                </Box>
-
-                {/* Info */}
-                <Box
-                  sx={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 0.5,
-                    flex: 1,
-                    pt: 0.5,
-                  }}
-                >
-                  <Typography
-                    variant="body2"
-                    fontWeight="bold"
-                    sx={{ lineHeight: 1.2 }}
-                  >
-                    {cardStudent.nom?.toUpperCase()}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    Né(e) le : {formatDate(cardStudent.date_naissance)}{" "}
-                  </Typography>
-                  <Box sx={{ mt: 1 }}>
-                    <Typography
-                      variant="caption"
-                      sx={{
-                        display: "block",
-                        fontWeight: "bold",
-                        color: "primary.main",
-                        mb: 0.5,
-                      }}
-                    >
-                      MATRICULE : {cardStudent.matricule || "N/A"}
-                    </Typography>
-                    <Typography
-                      variant="caption"
-                      sx={{ display: "block", lineHeight: 1.2 }}
-                    >
-                      Formation:{" "}
-                      {typeof cardStudent.filiere === "object"
-                        ? cardStudent.filiere?.intitule
-                        : filieres.find((f) => f.id === cardStudent.filiere)
-                            ?.intitule ||
-                          cardStudent.filiere ||
-                          "-"}
-                    </Typography>
-                    <Typography
-                      variant="caption"
-                      sx={{ display: "block", lineHeight: 1.2 }}
-                    >
-                      Niveau:{" "}
-                      {cardStudent.inscriptions &&
-                      cardStudent.inscriptions.length > 0
-                        ? cardStudent.inscriptions[0].niveau_nom
-                        : "-"}
-                    </Typography>
-                    <Typography
-                      variant="caption"
-                      sx={{ display: "block", lineHeight: 1.2 }}
-                    >
-                      Année Ac.:{" "}
-                      {cardStudent.inscriptions &&
-                      cardStudent.inscriptions.length > 0
-                        ? cardStudent.inscriptions[0].annee_academique
-                        : "2025/2026"}
-                    </Typography>
-                  </Box>
-                </Box>
-              </Box>
-
-              {/* Footer */}
-              <Box sx={{ bgcolor: "primary.main", height: 8, width: "100%" }} />
-            </Box>
+              flipable={true}
+            />
           )}
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenCardDialog(false)}>Annuler</Button>
+        <DialogActions sx={{ px: 3, py: 2, gap: 1, flexWrap: "wrap" }}>
+          <Button onClick={() => setOpenCardDialog(false)}>Fermer</Button>
+          <Button
+            variant="outlined"
+            startIcon={<DownloadIcon />}
+            onClick={() => downloadCardAsPdf("front")}
+            color="primary"
+          >
+            PDF Recto
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<DownloadIcon />}
+            onClick={() => downloadCardAsPdf("back")}
+            color="primary"
+          >
+            PDF Verso
+          </Button>
           <Button
             variant="contained"
             startIcon={<DownloadIcon />}
-            onClick={downloadCardAsPdf}
+            onClick={() => downloadCardAsPdf("both")}
             color="secondary"
           >
-            Télécharger en PDF
+            PDF Complet (Recto + Verso)
           </Button>
         </DialogActions>
       </Dialog>

@@ -1,19 +1,26 @@
 import React from 'react';
 import {
+  Box,
   Button,
+  Chip,
   CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
   FormControl,
+  FormHelperText,
   Grid,
+  InputAdornment,
   InputLabel,
   MenuItem,
+  Paper,
   Select,
   TextField,
   Typography,
 } from '@mui/material';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import AttachFileIcon from '@mui/icons-material/AttachFile';
 
 export default function PaymentModal({
   open,
@@ -30,10 +37,18 @@ export default function PaymentModal({
       ? selectedStudent?.solde_restant_inscription
       : selectedStudent?.solde_restant_formation;
 
+  const handleFileChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      setForm({ ...form, justificatif: e.target.files[0] });
+    }
+  };
+
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
-      <DialogTitle>Enregistrer un paiement</DialogTitle>
-      <DialogContent>
+      <DialogTitle sx={{ fontWeight: 700, color: 'primary.main' }}>
+        Enregistrer un nouveau paiement
+      </DialogTitle>
+      <DialogContent dividers>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           {selectedStudent
             ? `Étudiant: ${selectedStudent.etudiant_nom} | Formation: ${selectedStudent.formation_nom}`
@@ -62,7 +77,8 @@ export default function PaymentModal({
               value={form.montant}
               onChange={(event) => setForm({ ...form, montant: event.target.value })}
               error={Boolean(formErrors.montant)}
-              helperText={formErrors.montant || (remaining != null ? `Reste à payer: ${remaining} FCFA` : '')}
+              helperText={formErrors.montant || (remaining != null ? `Reste à payer: ${Number(remaining).toLocaleString()} FCFA` : '')}
+              InputProps={{ endAdornment: <InputAdornment position="end">FCFA</InputAdornment> }}
             />
           </Grid>
           <Grid item xs={12}>
@@ -81,14 +97,74 @@ export default function PaymentModal({
               </Select>
             </FormControl>
           </Grid>
+
+          {/* Justificatif / Reçu de Paiement OBLIGATOIRE */}
+          <Grid item xs={12}>
+            <Paper
+              variant="outlined"
+              sx={{
+                p: 2,
+                borderRadius: 2,
+                bgcolor: formErrors.justificatif ? '#fff5f5' : '#f0f7ff',
+                borderColor: formErrors.justificatif ? '#f44336' : '#b3d8ff',
+              }}
+            >
+              <Typography
+                variant="body2"
+                fontWeight={700}
+                color={formErrors.justificatif ? 'error.main' : 'primary.main'}
+                gutterBottom
+                sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+              >
+                <CloudUploadIcon fontSize="small" /> Scan / Photo du reçu de paiement * (Obligatoire)
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 1 }}>
+                <Button
+                  variant="contained"
+                  component="label"
+                  color={formErrors.justificatif ? 'error' : 'info'}
+                  size="small"
+                  startIcon={<AttachFileIcon />}
+                  sx={{ textTransform: 'none' }}
+                >
+                  {form.justificatif ? 'Changer le reçu' : 'Importer le justificatif'}
+                  <input
+                    type="file"
+                    hidden
+                    accept="image/*,application/pdf"
+                    onChange={handleFileChange}
+                  />
+                </Button>
+                {form.justificatif ? (
+                  <Chip
+                    label={form.justificatif.name}
+                    onDelete={() => setForm({ ...form, justificatif: null })}
+                    color="primary"
+                    size="small"
+                    sx={{ maxWidth: 300 }}
+                  />
+                ) : (
+                  <Typography variant="caption" color="text.secondary">
+                    Fichiers acceptés: PDF, PNG, JPG (Requis pour la validation du paiement)
+                  </Typography>
+                )}
+              </Box>
+              {formErrors.justificatif && (
+                <FormHelperText error sx={{ mt: 1, fontWeight: 600 }}>
+                  {formErrors.justificatif}
+                </FormHelperText>
+              )}
+            </Paper>
+          </Grid>
         </Grid>
       </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Annuler</Button>
-        <Button variant="contained" color="primary" onClick={onSave} disabled={submitting}>
+      <DialogActions sx={{ p: 2 }}>
+        <Button onClick={onClose} disabled={submitting}>Annuler</Button>
+        <Button variant="contained" color="success" onClick={onSave} disabled={submitting} sx={{ minWidth: 140 }}>
           {submitting ? <CircularProgress size={20} color="inherit" /> : 'Valider le paiement'}
         </Button>
       </DialogActions>
     </Dialog>
   );
 }
+

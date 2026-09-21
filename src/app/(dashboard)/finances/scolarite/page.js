@@ -48,8 +48,11 @@ import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import SchoolIcon from '@mui/icons-material/School';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import PeopleIcon from '@mui/icons-material/People';
+import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 import {
   anneesAcademiquesService,
+  boursesService,
   classesService,
   classScheduleService,
   etudiantsService,
@@ -59,12 +62,15 @@ import {
   paiementsService,
   paiementAlertsService,
 } from '../../../../services/api/services';
+
 import { getApiErrorMessage } from '../../../../services/api/client';
 import { formatDate } from '../../../../utils/formatters';
 import PaymentModal from '../../../../components/finances/PaymentModal';
 import AddInscriptionModal from '../../../../components/finances/AddInscriptionModal';
+import StudentPaymentDetailsModal from '../../../../components/finances/StudentPaymentDetailsModal';
 import { useAcademicYear } from '../../../../context/AcademicYearContext';
 import { useUserPermissions } from '../../../../utils/permissions';
+
 
 function toList(data) {
   return Array.isArray(data) ? data : data?.results || [];
@@ -124,6 +130,9 @@ export default function ScolaritePage() {
   const [openPaymentModal, setOpenPaymentModal] = useState(false);
   const [selectedRow, setSelectedRow] = useState(null);
   const [openInscriptionModal, setOpenInscriptionModal] = useState(false);
+  const [openDetailsModal, setOpenDetailsModal] = useState(false);
+  const [selectedDetailsStudent, setSelectedDetailsStudent] = useState(null);
+
 
   // Frais
   const [frais, setFrais] = useState([]);
@@ -148,6 +157,14 @@ export default function ScolaritePage() {
   // Delete
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
+
+  // Bourses state
+  const [bourses, setBourses] = useState([]);
+  const [loadingBourses, setLoadingBourses] = useState(true);
+  const [openBourseModal, setOpenBourseModal] = useState(false);
+  const [formBourse, setFormBourse] = useState({ code: '', description: '', montant: '' });
+  const [submittingBourse, setSubmittingBourse] = useState(false);
+  const [searchBourse, setSearchBourse] = useState('');
 
   const [toast, setToast] = useState({ open: false, message: '', severity: 'success' });
 
@@ -175,15 +192,94 @@ export default function ScolaritePage() {
     if (currentTab === 0) fetchDashboard();
     if (currentTab === 1) fetchData();
     if (currentTab === 2) fetchFrais();
+    if (currentTab === 3) fetchBourses();
   }, [currentTab, selectedYear?.id]);
+
+  const fetchBourses = async () => {
+    if (!boursesService?.list) {
+      console.warn("boursesService non initialisé");
+      return;
+    }
+    setLoadingBourses(true);
+    try {
+      const res = await boursesService.list();
+      setBourses(toList(res));
+    } catch (e) {
+      console.error(e);
+      setToast({ open: true, message: 'Erreur lors du chargement des bourses', severity: 'error' });
+    } finally {
+      setLoadingBourses(false);
+    }
+  };
+
+  const handleSaveBourse = async () => {
+    if (!formBourse.code.trim() || !formBourse.montant || Number(formBourse.montant) <= 0) {
+      setToast({ open: true, message: 'Veuillez saisir un code valide et un montant supérieur à 0.', severity: 'warning' });
+      return;
+    }
+    if (!boursesService?.create) {
+      setToast({ open: true, message: 'Service de bourses non disponible, veuillez rafraîchir la page.', severity: 'error' });
+      return;
+    }
+    setSubmittingBourse(true);
+    try {
+      await boursesService.create({
+        code: formBourse.code.trim().toUpperCase(),
+        description: formBourse.description.trim(),
+        montant: String(formBourse.montant),
+      });
+      setToast({ open: true, message: 'Bourse créée avec succès !', severity: 'success' });
+      setOpenBourseModal(false);
+      setFormBourse({ code: '', description: '', montant: '' });
+      fetchBourses();
+    } catch (err) {
+      console.error(err);
+      setToast({ open: true, message: getApiErrorMessage(err, "Erreur de création de bourse"), severity: 'error' });
+    } finally {
+      setSubmittingBourse(false);
+    }
+  };
+
+  const handleDeleteBourse = async (id) => {
+    if (!window.confirm("Êtes-vous sûr de vouloir supprimer cette bourse ?")) return;
+    if (!boursesService?.remove && !boursesService?.delete) return;
+    try {
+      if (boursesService.delete) {
+        await boursesService.delete(id);
+      } else {
+        await boursesService.remove(id);
+      }
+      setToast({ open: true, message: 'Bourse supprimée', severity: 'success' });
+      fetchBourses();
+    } catch (err) {
+      console.error(err);
+      setToast({ open: true, message: 'Impossible de supprimer cette bourse', severity: 'error' });
+    }
+  };
+
+
+  const filteredBourses = useMemo(() => {
+    if (!searchBourse.trim()) return bourses;
+    const q = searchBourse.toLowerCase();
+    return bourses.filter(
+      (b) =>
+        b.code?.toLowerCase().includes(q) ||
+        b.description?.toLowerCase().includes(q) ||
+        b.etudiant_nom?.toLowerCase().includes(q)
+    );
+  }, [bourses, searchBourse]);
+
 
   const fetchDashboard = async () => {
     setLoadingDashboard(true);
     try {
       const data = await paiementsService.dashboard();
       setDashboard(data);
-    } catch (e) { console.error(e); }
-    finally { setLoadingDashboard(false); }
+    } catch (e) {
+      if (e?.response?.status !== 401 && e?.response?.status !== 403) {
+        console.error(e);
+      }
+    } finally { setLoadingDashboard(false); }
   };
 
   const fetchData = async () => {
@@ -310,10 +406,17 @@ export default function ScolaritePage() {
       paiement_type: Number(row.solde_restant_inscription || 0) > 0 ? 'INSCRIPTION' : 'FORMATION',
       montant: '',
       mode_paiement: 'cash',
+      justificatif: null,
     });
     setFormErrors({});
     setOpenPaymentModal(true);
   };
+
+  const openDetailsForStudent = (row) => {
+    setSelectedDetailsStudent(row);
+    setOpenDetailsModal(true);
+  };
+
 
   const openInscriptionForm = () => {
     const activeYear = academicYears.find((item) => item.est_active) || academicYears[0];
@@ -354,13 +457,20 @@ export default function ScolaritePage() {
             <Button variant="outlined" color="success" startIcon={<AddIcon />} onClick={() => setOpenQuickConfig(true)}>Config. Rapide</Button>
           </Box>
         )}
+        {currentTab === 3 && canWriteFinance && (
+          <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={() => { setFormBourse({ code: '', description: '', montant: '' }); setOpenBourseModal(true); }}>
+            Créer une Bourse
+          </Button>
+        )}
       </Box>
 
       <Tabs value={currentTab} onChange={(e, v) => setCurrentTab(v)} variant="scrollable" scrollButtons="auto" sx={{ mb: 3, borderBottom: 1, borderColor: 'divider' }}>
         <Tab label="Statistiques" />
         <Tab label="Suivi des paiements" />
         <Tab label="Configuration des Frais" />
+        <Tab label="Gestion des Bourses" />
       </Tabs>
+
 
       {/* TAB 0: STATISTIQUES SCOLARITE */}
       {currentTab === 0 && (
@@ -591,7 +701,34 @@ export default function ScolaritePage() {
                   </TableRow>
                 ) : filteredRows.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((item) => (
                   <TableRow key={`${item.etudiant}-${item.formation}`} hover>
-                    <TableCell>{item.etudiant_nom || '-'}</TableCell>
+                    <TableCell>
+                      <Typography
+                        variant="body2"
+                        fontWeight={700}
+                        onClick={() => openDetailsForStudent(item)}
+                        sx={{ cursor: 'pointer', color: 'primary.main', '&:hover': { textDecoration: 'underline' } }}
+                      >
+                        {item.etudiant_nom || '-'}
+                      </Typography>
+                      {item.type_reduction && item.type_reduction !== 'NONE' && (
+                        <Box sx={{ mt: 0.5 }}>
+                          <Chip
+                            label={
+                              item.type_reduction === 'BOURSE'
+                                ? `Bourse ${item.bourse_code ? `(${item.bourse_code})` : ''} -${Number(item.montant_reduction).toLocaleString()} FCFA`
+                                : item.type_reduction === 'PERCENT_10'
+                                ? `Réduction 10% (-${Number(item.montant_reduction).toLocaleString()} FCFA)`
+                                : `Réduction (-${Number(item.montant_reduction).toLocaleString()} FCFA)`
+                            }
+                            color="secondary"
+                            size="small"
+                            variant="outlined"
+                            sx={{ fontWeight: 600, fontSize: '0.7rem' }}
+                          />
+                        </Box>
+                      )}
+                    </TableCell>
+
                     <TableCell>{item.formation_nom || '-'}</TableCell>
                     <TableCell>
                       <Typography variant="body2">Dû: {formatCurrency(item.montant_du_inscription)}</Typography>
@@ -614,14 +751,25 @@ export default function ScolaritePage() {
                       <Chip label={paymentStateLabel(item)} color={paymentStateColor(item)} size="small" />
                     </TableCell>
                     <TableCell align="right">
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        color="info"
+                        startIcon={<VisibilityIcon />}
+                        onClick={() => openDetailsForStudent(item)}
+                        sx={{ mr: 1, textTransform: 'none' }}
+                      >
+                        Détails & Reçus
+                      </Button>
                       {canWriteFinance && (Number(item.solde_restant) || 0) > 0 && (
-                        <Button size="small" variant="outlined" color="primary" startIcon={<AddCardIcon />} onClick={() => openPaymentForRow(item)}>
+                        <Button size="small" variant="contained" color="success" startIcon={<AddCardIcon />} onClick={() => openPaymentForRow(item)} sx={{ textTransform: 'none' }}>
                           Payer
                         </Button>
                       )}
                     </TableCell>
                   </TableRow>
                 ))}
+
                 {!loading && filteredRows.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={7} align="center">
@@ -750,7 +898,134 @@ export default function ScolaritePage() {
         </Box>
       )}
 
+      {/* TAB 3: GESTION DES BOURSES */}
+      {currentTab === 3 && (
+        <Box>
+          <Box sx={{ mb: 3, display: 'flex', gap: 2, alignItems: 'center' }}>
+            <TextField
+              size="small"
+              placeholder="Rechercher par code, description ou étudiant..."
+              value={searchBourse}
+              onChange={(e) => setSearchBourse(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon color="action" />
+                  </InputAdornment>
+                ),
+              }}
+              sx={{ width: 380 }}
+            />
+          </Box>
+
+          <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
+            <Table size="small">
+              <TableHead sx={{ bgcolor: '#f8fafc' }}>
+                <TableRow>
+                  <TableCell><strong>Code Bourse</strong></TableCell>
+                  <TableCell><strong>Description</strong></TableCell>
+                  <TableCell><strong>Montant</strong></TableCell>
+                  <TableCell><strong>Statut</strong></TableCell>
+                  <TableCell><strong>Étudiant Bénéficiaire</strong></TableCell>
+                  <TableCell><strong>Date d&apos;utilisation</strong></TableCell>
+                  <TableCell align="center"><strong>Actions</strong></TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {loadingBourses ? (
+                  <TableRow><TableCell colSpan={7} align="center"><CircularProgress size={24} sx={{ my: 2 }} /></TableCell></TableRow>
+                ) : filteredBourses.length > 0 ? (
+                  filteredBourses.map((b) => (
+                    <TableRow key={b.id} hover>
+                      <TableCell>
+                        <Chip label={b.code} color="primary" variant="outlined" size="small" sx={{ fontWeight: 700 }} />
+                      </TableCell>
+                      <TableCell>{b.description || '-'}</TableCell>
+                      <TableCell sx={{ fontWeight: 600 }}>{formatCurrency(b.montant)}</TableCell>
+                      <TableCell>
+                        {b.est_utilisee ? (
+                          <Chip label="Utilisée" color="default" size="small" />
+                        ) : (
+                          <Chip label="Disponible" color="success" size="small" />
+                        )}
+                      </TableCell>
+                      <TableCell>{b.etudiant_nom || '-'}</TableCell>
+                      <TableCell>{formatDateLocal(b.date_utilisation)}</TableCell>
+                      <TableCell align="center">
+                        {!b.est_utilisee && canWriteFinance && (
+                          <IconButton size="small" color="error" onClick={() => handleDeleteBourse(b.id)}>
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={7} align="center">Aucune bourse enregistrée.</TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Box>
+      )}
+
       {/* === DIALOGS === */}
+
+      {/* Dialog Bourse */}
+      <Dialog open={openBourseModal} onClose={() => setOpenBourseModal(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700, color: 'primary.main' }}>
+          Enregistrer une nouvelle Bourse d&apos;études
+        </DialogTitle>
+        <DialogContent dividers>
+          <Grid container spacing={2} sx={{ mt: 0.5 }}>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Code Bourse"
+                placeholder="ex: BRS-2026-001"
+                value={formBourse.code}
+                onChange={(e) => setFormBourse({ ...formBourse, code: e.target.value.toUpperCase() })}
+                required
+                helperText="Code unique pour la vérification à l'inscription"
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Description / Motif"
+                placeholder="ex: Bourse d'excellence ministérielle"
+                value={formBourse.description}
+                onChange={(e) => setFormBourse({ ...formBourse, description: e.target.value })}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                type="number"
+                label="Montant de la bourse (FCFA)"
+                value={formBourse.montant}
+                onChange={(e) => setFormBourse({ ...formBourse, montant: e.target.value })}
+                required
+                inputProps={{ min: 1 }}
+              />
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenBourseModal(false)}>Annuler</Button>
+          <Button
+            variant="contained"
+            color="primary"
+            disabled={submittingBourse}
+            onClick={handleSaveBourse}
+          >
+            {submittingBourse ? <CircularProgress size={20} /> : 'Créer la bourse'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
 
       {/* Frais */}
       <Dialog open={openFraisForm} onClose={() => setOpenFraisForm(false)} maxWidth="xs" fullWidth>
@@ -864,9 +1139,17 @@ export default function ScolaritePage() {
         anneesAcademiques={academicYears}
       />
 
+      <StudentPaymentDetailsModal
+        open={openDetailsModal}
+        onClose={() => setOpenDetailsModal(false)}
+        student={selectedDetailsStudent}
+        onOpenPayment={openPaymentForRow}
+      />
+
       <Snackbar open={toast.open} autoHideDuration={4000} onClose={() => setToast((current) => ({ ...current, open: false }))}>
         <Alert severity={toast.severity}>{toast.message}</Alert>
       </Snackbar>
+
     </Box>
   );
 }

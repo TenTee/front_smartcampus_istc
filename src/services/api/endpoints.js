@@ -77,7 +77,9 @@ export const API_ENDPOINTS = {
   paiesCampagnes: '/api/paie/campagnes/',
   paiesGenererCampagne: '/api/paie/campagnes/generer/',
   paiesStatistiques: '/api/paie/statistiques/',
+  bourses: '/api/bourses/',
 };
+
 
 export function idPath(basePath, id) {
   return `${basePath}${id}/`;

@@ -162,7 +162,9 @@ export default function FinancesPage() {
         .sort((a, b) => new Date(b.date) - new Date(a.date));
       setTransactions(merged);
     } catch (err) {
-      console.error(err);
+      if (err?.response?.status !== 401 && err?.response?.status !== 403) {
+        console.error(err);
+      }
     } finally {
       setLoadingDashboard(false);
       setLoadingSalaires(false);
@@ -291,7 +293,7 @@ export default function FinancesPage() {
             <>
               {/* Section 1: Vue d'ensemble financière globale */}
               <Typography variant="h6" fontWeight="bold" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
-                <AccountBalanceIcon sx={{ mr: 1 }} /> Vue d'ensemble
+                  <AccountBalanceIcon sx={{ mr: 1 }} /> Vue d&apos;ensemble
               </Typography>
               <Grid container spacing={2} sx={{ mb: 4 }}>
                 <Grid item xs={12} sm={6} md={3}>

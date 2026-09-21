@@ -11,11 +11,13 @@ import {
   IconButton,
   Alert,
   CircularProgress,
+  Divider,
 } from "@mui/material";
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import AccountCircleOutlined from "@mui/icons-material/AccountCircleOutlined";
 import LockOutlined from "@mui/icons-material/LockOutlined";
+import PersonAddOutlinedIcon from "@mui/icons-material/PersonAddOutlined";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -360,20 +362,36 @@ export default function LoginPage() {
               )}
             </Button>
 
+            <Divider sx={{ my: 3 }}>
+              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
+                Nouveau candidat ou futur étudiant ?
+              </Typography>
+            </Divider>
+
             <Button
               fullWidth
               variant="outlined"
               size="large"
+              color="primary"
+              startIcon={<PersonAddOutlinedIcon />}
               onClick={() => router.push("/preinscription")}
               sx={{
-                mt: 1.5,
-                py: 1.3,
+                py: 1.2,
                 fontSize: "0.95rem",
                 fontWeight: 700,
                 borderRadius: 2,
+                textTransform: "none",
+                borderColor: "#193A7F",
+                color: "#193A7F",
+                borderWidth: 1.5,
+                "&:hover": {
+                  bgcolor: "rgba(25, 58, 127, 0.05)",
+                  borderColor: "#193A7F",
+                  borderWidth: 1.5,
+                },
               }}
             >
-              Pré-inscription
+              Préinscription en ligne
             </Button>
           </form>
         </Paper>
