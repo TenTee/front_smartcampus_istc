@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Box, Paper, Skeleton, Grid } from '@mui/material';
+import { Box, Paper, Skeleton } from '@mui/material';
 import TableSkeleton from './TableSkeleton';
 import CardSkeletonGrid from './CardSkeleton';
 

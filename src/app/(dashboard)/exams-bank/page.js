@@ -67,23 +67,23 @@ export default function ExamsBankAdminPage() {
     est_partage: true,
   });
 
+  // Rechargement de la liste après import / modification / suppression.
+  // (refreshItems était appelé mais n'avait jamais été défini : la suppression affichait
+  // une erreur alors qu'elle avait réussi, et la liste ne se mettait pas à jour.)
+  const refreshItems = async () => {
+    try {
+      const res = await epreuvesService.list();
+      setItems(toList(res));
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const res = await epreuvesService.list();
-        if (!mounted) return;
-        setItems(toList(res));
-      } catch (e) {
-        console.error(e);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, []);
+    refreshItems();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     let mounted = true;

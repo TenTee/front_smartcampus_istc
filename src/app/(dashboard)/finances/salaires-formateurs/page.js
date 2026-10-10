@@ -23,7 +23,7 @@ import { formatDate } from '../../../../utils/formatters';
 import {
   paiesService, primesService, retenuesService, avancesService,
   bulletinsService, campagnesService, statistiquesPaieService, demandeursService,
-  formateursService,
+  formateursService, vacationsService,
 } from '../../../../services/api/services';
 import { getApiErrorMessage } from '../../../../services/api/client';
 import { useUserPermissions } from '../../../../utils/permissions';
@@ -117,6 +117,9 @@ export default function SalairesFormateursPage() {
   const [itemToDelete, setItemToDelete] = useState(null);
 
   const [heuresVacataires, setHeuresVacataires] = useState({});
+  // Heures issues des récapitulatifs mensuels validés (pointage des coordonnateurs)
+  const [heuresValidees, setHeuresValidees] = useState({});
+  const [recapsNonValides, setRecapsNonValides] = useState(0);
 
   useEffect(() => {
     fetchDemandeurs();
@@ -124,6 +127,23 @@ export default function SalairesFormateursPage() {
     fetchForecast();
     fetchFormateurs();
   }, []);
+
+  useEffect(() => {
+    vacationsService
+      .heuresValidees({ mois: genererForm.mois, annee: genererForm.annee })
+      .then((res) => {
+        const map = {};
+        (res?.heures || []).forEach((h) => { map[h.formateur_id] = { heures: Number(h.heures), montant: Number(h.montant) }; });
+        setHeuresValidees(map);
+        setRecapsNonValides(res?.recaps_non_valides || 0);
+      })
+      .catch(() => { setHeuresValidees({}); setRecapsNonValides(0); });
+  }, [genererForm.mois, genererForm.annee]);
+
+  // Heures retenues pour un vacataire : récap validé en priorité, sinon saisie manuelle exceptionnelle.
+  const heuresDe = (f) => (heuresValidees[f.id] ? heuresValidees[f.id].heures : Number(heuresVacataires[f.id]) || 0);
+  const montantDe = (f) => (heuresValidees[f.id] ? heuresValidees[f.id].montant : (Number(f.taux_horaire) || 0) * (Number(heuresVacataires[f.id]) || 0));
+  const totalVacataires = () => formateurs.filter(f => f.type_formateur === 'vacataire').reduce((sum, f) => sum + montantDe(f), 0);
 
   useEffect(() => {
     if (currentTab === 0) fetchCampagnes();
@@ -228,18 +248,19 @@ export default function SalairesFormateursPage() {
 
   const handleGenererCampagne = async () => {
     const vacataires = formateurs.filter(f => f.type_formateur === 'vacataire');
-    const heuresManquantes = vacataires.filter(f => !heuresVacataires[f.id] || Number(heuresVacataires[f.id]) <= 0);
-    if (heuresManquantes.length > 0) {
-      setToast({ open: true, message: `Veuillez saisir les heures pour: ${heuresManquantes.map(f => `${f.nom} ${f.prenom}`).join(', ')}`, severity: 'warning' });
+    const sansHeures = vacataires.filter(f => heuresDe(f) <= 0);
+    if (sansHeures.length > 0 && !window.confirm(
+      `${sansHeures.length} vacataire(s) sans heures validées ni saisies (${sansHeures.map(f => f.nom).join(', ')}) ne seront pas payés pour ce mois. Continuer ?`
+    )) {
       return;
     }
 
     setGenerating(true);
     try {
-      const heures_formateurs = vacataires.map(f => ({
-        formateur_id: f.id,
-        heures: Number(heuresVacataires[f.id]),
-      }));
+      // Seules les saisies manuelles sont envoyées : le serveur reprend lui-même les récaps validés.
+      const heures_formateurs = vacataires
+        .filter(f => !heuresValidees[f.id] && Number(heuresVacataires[f.id]) > 0)
+        .map(f => ({ formateur_id: f.id, heures: Number(heuresVacataires[f.id]) }));
       await campagnesService.generer({ ...genererForm, type_beneficiaire: 'formateur', heures_formateurs });
       setToast({ open: true, message: 'Campagne formateurs générée avec succès !', severity: 'success' });
       setOpenGenerer(false);
@@ -467,11 +488,12 @@ export default function SalairesFormateursPage() {
                 <Typography variant="h6" fontWeight="bold">Heures effectuées - Formateurs vacataires</Typography>
               </Box>
               <Typography variant="body2" color="text.secondary">
-                Total estimé: <strong>{formateurs.filter(f => f.type_formateur === 'vacataire').reduce((sum, f) => sum + (Number(f.taux_horaire) || 0) * (Number(heuresVacataires[f.id]) || 0), 0).toLocaleString()} FCFA</strong>
+                Total estimé ({MOIS_LABELS[genererForm.mois]} {genererForm.annee}): <strong>{totalVacataires().toLocaleString()} FCFA</strong>
               </Typography>
             </Box>
             <Alert severity="info" sx={{ mb: 2 }}>
-              Saisissez le nombre d'heures de cours effectuées par chaque vacataire pour le mois en cours. Le montant à payer sera calculé automatiquement (Taux horaire x Heures effectuées).
+              Les heures proviennent des pointages des coordonnateurs, une fois le récapitulatif mensuel validé (menu « Heures vacataires »). La saisie manuelle reste possible à titre exceptionnel pour un vacataire sans récapitulatif validé.
+              {recapsNonValides > 0 && <><br /><strong>{recapsNonValides} récapitulatif(s) de {MOIS_LABELS[genererForm.mois]} {genererForm.annee} ne sont pas encore validés.</strong></>}
             </Alert>
             <TableContainer>
               <Table size="small">
@@ -486,22 +508,27 @@ export default function SalairesFormateursPage() {
                 <TableBody>
                   {formateurs.filter(f => f.type_formateur === 'vacataire').map((f) => {
                     const taux = Number(f.taux_horaire) || 0;
-                    const heures = Number(heuresVacataires[f.id]) || 0;
-                    const montant = taux * heures;
+                    const montant = montantDe(f);
+                    const valide = heuresValidees[f.id];
                     return (
                       <TableRow key={f.id} hover>
                         <TableCell sx={{ fontWeight: 500 }}>{f.nom} {f.prenom}</TableCell>
                         <TableCell>{taux.toLocaleString()} FCFA/h</TableCell>
                         <TableCell>
+                          {valide ? (
+                            <Chip label={`${valide.heures} h · pointage validé`} size="small" color="success" />
+                          ) : (
                           <TextField
                             size="small"
                             type="number"
+                            label="Saisie manuelle"
                             value={heuresVacataires[f.id] || ''}
                             onChange={(e) => setHeuresVacataires(prev => ({ ...prev, [f.id]: e.target.value }))}
                             placeholder="0"
                             inputProps={{ min: 0, step: 0.5 }}
-                            sx={{ width: 120 }}
+                            sx={{ width: 140 }}
                           />
+                          )}
                         </TableCell>
                         <TableCell sx={{ fontWeight: 'bold', color: montant > 0 ? 'success.main' : 'text.secondary' }}>
                           {montant.toLocaleString()} FCFA
@@ -902,7 +929,7 @@ export default function SalairesFormateursPage() {
         <DialogTitle>Générer une campagne de paie (Formateurs)</DialogTitle>
         <DialogContent dividers>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Les formateurs permanents seront payés leur salaire fixe. Pour les vacataires, le montant est calculé à partir des heures saisies ci-dessus.
+            Les formateurs permanents seront payés leur salaire fixe. Pour les vacataires, le montant est calculé à partir des heures validées (pointage des coordonnateurs) ou, à défaut, des heures saisies manuellement.
           </Typography>
           <Grid container spacing={2} sx={{ mb: 3 }}>
             <Grid item xs={6}>
@@ -935,22 +962,24 @@ export default function SalairesFormateursPage() {
                   <TableBody>
                     {formateurs.filter(f => f.type_formateur === 'vacataire').map((f) => {
                       const taux = Number(f.taux_horaire) || 0;
-                      const h = Number(heuresVacataires[f.id]) || 0;
+                      const h = heuresDe(f);
                       return (
                         <TableRow key={f.id}>
                           <TableCell>{f.nom} {f.prenom}</TableCell>
                           <TableCell>{taux.toLocaleString()} /h</TableCell>
                           <TableCell>
-                            {h > 0 ? <Chip label={`${h}h`} size="small" color="primary" /> : <Chip label="Non saisi" size="small" color="error" variant="outlined" />}
+                            {h > 0
+                              ? <Chip label={`${h}h${heuresValidees[f.id] ? ' (validé)' : ' (manuel)'}`} size="small" color={heuresValidees[f.id] ? 'success' : 'primary'} />
+                              : <Chip label="Aucune heure" size="small" color="error" variant="outlined" />}
                           </TableCell>
-                          <TableCell sx={{ fontWeight: 'bold' }}>{(taux * h).toLocaleString()} FCFA</TableCell>
+                          <TableCell sx={{ fontWeight: 'bold' }}>{montantDe(f).toLocaleString()} FCFA</TableCell>
                         </TableRow>
                       );
                     })}
                     <TableRow sx={{ bgcolor: '#F5F7FA' }}>
                       <TableCell colSpan={3} sx={{ fontWeight: 'bold' }}>Total vacataires</TableCell>
                       <TableCell sx={{ fontWeight: 'bold', color: 'primary.main' }}>
-                        {formateurs.filter(f => f.type_formateur === 'vacataire').reduce((sum, f) => sum + (Number(f.taux_horaire) || 0) * (Number(heuresVacataires[f.id]) || 0), 0).toLocaleString()} FCFA
+                        {totalVacataires().toLocaleString()} FCFA
                       </TableCell>
                     </TableRow>
                   </TableBody>

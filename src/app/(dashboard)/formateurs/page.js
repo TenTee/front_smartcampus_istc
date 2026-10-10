@@ -344,19 +344,6 @@ export default function FormateursPage() {
     }
   };
 
-  const getSpecialiteLabels = (specialiteIds) => {
-    if (!Array.isArray(specialiteIds)) return "-";
-    return specialiteIds
-      .map((id) => {
-        // Gérer si le tableau contient des objets ou des ID
-        const itemId = typeof id === "object" ? id.id : id;
-        const match = specialitesList.find((sp) => sp.id === itemId);
-        return match
-          ? match.intitule || match.nom || `Module #${itemId}`
-          : `Spécialité #${itemId}`;
-      })
-      .join(", ");
-  };
 
   return (
     <Box>

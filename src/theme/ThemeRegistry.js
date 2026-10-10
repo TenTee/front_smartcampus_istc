@@ -16,16 +16,13 @@ export default function ThemeRegistry({ children }) {
   const [activeTheme, setActiveTheme] = React.useState(defaultTheme);
 
   // Create a client-side cache. On the server this will be created per render.
-  const cacheRef = React.useRef();
-  if (!cacheRef.current) {
-    cacheRef.current = createEmotionCache();
-  }
+  const [cache] = React.useState(() => createEmotionCache());
 
   // Inject server-side Emotion styles into the HTML head
   useServerInsertedHTML(() => {
-    const { sheet } = cacheRef.current;
+    const { sheet } = cache;
     const styles = sheet?.tags?.map((tag) => tag.textContent).join('') || '';
-    return <style data-emotion={`css ${cacheRef.current.key}`} dangerouslySetInnerHTML={{ __html: styles }} />;
+    return <style data-emotion={`css ${cache.key}`} dangerouslySetInnerHTML={{ __html: styles }} />;
   });
 
   const loadThemeConfig = async () => {
@@ -55,7 +52,7 @@ export default function ThemeRegistry({ children }) {
 
   return (
     <ConfigContext.Provider value={config}>
-      <CacheProvider value={cacheRef.current}>
+      <CacheProvider value={cache}>
         <ThemeProvider theme={activeTheme}>
           <CssBaseline />
           {children}

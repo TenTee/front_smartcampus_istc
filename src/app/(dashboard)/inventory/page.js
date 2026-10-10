@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useMemo, useCallback } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Box,
   Typography,
@@ -43,7 +43,6 @@ import {
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
-import VisibilityIcon from "@mui/icons-material/Visibility";
 import InventoryIcon from "@mui/icons-material/Inventory";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
@@ -165,12 +164,6 @@ export default function InventoryPage() {
   const [submittingStock, setSubmittingStock] = useState(false);
 
   // Exemplaire actions
-  const [openExemplaireAction, setOpenExemplaireAction] = useState(false);
-  const [exemplaireAction, setExemplaireAction] = useState({
-    type: "",
-    exemplaire: null,
-    data: {},
-  });
 
   // Exemplaire edit dialog
   const [openEditExemplaire, setOpenEditExemplaire] = useState(false);

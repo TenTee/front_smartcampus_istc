@@ -20,8 +20,9 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import { usePathname, useRouter } from 'next/navigation';
 import { formateurRoutes } from '../../config/routes';
 import { ConfigContext } from '../../theme/ThemeRegistry';
-import { getMediaUrl } from '../../services/api/client';
+import { getMediaUrl, clearSession } from '../../services/api/client';
 import { useSidebar } from '../../context/SidebarContext';
+import { formateurPortalService } from '../../services/api/services';
 
 const EXPANDED_WIDTH = 260;
 const COLLAPSED_WIDTH = 70;
@@ -37,6 +38,26 @@ export default function FormateurSidebar() {
     isMobile,
     closeMobileSidebar,
   } = useSidebar();
+
+  // Le menu « Coordination » n'est visible que pour les formateurs coordonnateurs d'une filière.
+  const [isCoordonnateur, setIsCoordonnateur] = React.useState(false);
+  React.useEffect(() => {
+    try {
+      setIsCoordonnateur(localStorage.getItem('is_coordonnateur') === 'true');
+    } catch {}
+    formateurPortalService
+      .me()
+      .then((me) => {
+        const value = Boolean(me?.est_coordonnateur);
+        setIsCoordonnateur(value);
+        try {
+          localStorage.setItem('is_coordonnateur', value ? 'true' : 'false');
+        } catch {}
+      })
+      .catch(() => {});
+  }, []);
+
+  const visibleRoutes = formateurRoutes.filter((route) => !route.coordonnateurOnly || isCoordonnateur);
 
   const handleNavigate = (path) => {
     router.push(path);
@@ -112,7 +133,7 @@ export default function FormateurSidebar() {
       {/* Routes List */}
       <Box sx={{ flexGrow: 1, overflowY: 'auto', overflowX: 'hidden' }}>
         <List sx={{ px: isCollapsed && !isMobile ? 1 : 2, mt: 2 }}>
-          {formateurRoutes.map((route) => {
+          {visibleRoutes.map((route) => {
             const isActive =
               pathname === route.path ||
               (route.path !== '/formateur-portal' && pathname?.startsWith(route.path + '/'));
@@ -173,14 +194,7 @@ export default function FormateurSidebar() {
             <Tooltip title={isCollapsed && !isMobile ? 'Déconnexion' : ''} placement="right" arrow>
               <ListItemButton
                 onClick={() => {
-                  localStorage.removeItem('token');
-                  localStorage.removeItem('refreshToken');
-                  localStorage.removeItem('user');
-                  localStorage.removeItem('user_role');
-                  localStorage.removeItem('user_permissions');
-                  localStorage.removeItem('is_formateur');
-                  localStorage.removeItem('loginTime');
-                  document.cookie = 'token=; Max-Age=-99999999; path=/';
+                  clearSession();
                   handleNavigate('/login');
                 }}
                 sx={{

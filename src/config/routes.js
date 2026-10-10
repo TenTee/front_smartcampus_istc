@@ -4,7 +4,6 @@ import PersonIcon from '@mui/icons-material/Person';
 import SchoolIcon from '@mui/icons-material/School';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import InventoryIcon from '@mui/icons-material/Inventory';
-import SettingsIcon from '@mui/icons-material/Settings';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import FlightTakeoffIcon from '@mui/icons-material/FlightTakeoff';
 import GradeIcon from '@mui/icons-material/Grade';
@@ -17,6 +16,9 @@ import ClassIcon from '@mui/icons-material/Class';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import QuizIcon from '@mui/icons-material/Quiz';
+import HowToRegIcon from '@mui/icons-material/HowToReg';
+import PendingActionsIcon from '@mui/icons-material/PendingActions';
+import SupervisorAccountIcon from '@mui/icons-material/SupervisorAccount';
 
 export const routes = [
   {
@@ -78,6 +80,12 @@ export const routes = [
         path: '/attendance',
         icon: CalendarTodayIcon,
         permission: 'all',
+      },
+      {
+        label: 'Coordonnateurs',
+        path: '/coordonnateurs',
+        icon: SupervisorAccountIcon,
+        permission: 'all',
       }
     ]
   },
@@ -114,6 +122,12 @@ export const routes = [
         label: 'Salaires Formateurs',
         path: '/finances/salaires-formateurs',
         icon: PaymentsIcon,
+        permission: 'admin',
+      },
+      {
+        label: 'Heures vacataires',
+        path: '/finances/heures-vacataires',
+        icon: PendingActionsIcon,
         permission: 'admin',
       }
     ]
@@ -185,6 +199,17 @@ export const formateurRoutes = [
     label: 'Épreuves',
     path: '/formateur-portal/epreuves',
     icon: QuizIcon,
+  },
+  {
+    label: 'Mes heures',
+    path: '/formateur-portal/mes-heures',
+    icon: PendingActionsIcon,
+  },
+  {
+    label: 'Coordination',
+    path: '/formateur-portal/coordination',
+    icon: HowToRegIcon,
+    coordonnateurOnly: true,
   },
   {
     label: 'Mon Suivi',

@@ -7,33 +7,42 @@ import {
   Grid,
   Paper,
   CircularProgress,
-  Chip,
   Divider,
 } from '@mui/material';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import PersonIcon from '@mui/icons-material/Person';
-import { emploiDuTempsService } from '../../../../services/api/services';
+import { emploiDuTempsService, emploiDuTempsDocumentsService } from '../../../../services/api/services';
+import DocumentTimetableSection from '../../../../components/schedule/DocumentTimetableSection';
 
 const DAYS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
 
 export default function StudentSchedule() {
   const [schedule, setSchedule] = useState([]);
+  const [docSchedules, setDocSchedules] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const fetchData = async () => {
+    try {
+      // allSettled : un échec sur les documents ne doit pas masquer la grille (et inversement)
+      const [schedRes, docsRes] = await Promise.allSettled([
+        emploiDuTempsService.me(),
+        emploiDuTempsDocumentsService.getMine(),
+      ]);
+      const toList = (d) => (Array.isArray(d) ? d : d?.results || []);
+      if (schedRes.status === 'fulfilled') setSchedule(toList(schedRes.value));
+      else console.error("Erreur de chargement de la grille :", schedRes.reason);
+      if (docsRes.status === 'fulfilled') setDocSchedules(toList(docsRes.value));
+      else console.error("Erreur de chargement des documents :", docsRes.reason);
+    } catch (error) {
+      console.error("Erreur emploi du temps:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchSchedule = async () => {
-      try {
-        // me() is a custom action we added
-        const res = await emploiDuTempsService.me();
-        setSchedule(res);
-      } catch (error) {
-        console.error("Erreur emploi du temps:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchSchedule();
+    fetchData();
   }, []);
 
   if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 5 }}><CircularProgress /></Box>;
@@ -49,6 +58,19 @@ export default function StudentSchedule() {
       <Typography variant="h5" fontWeight="bold" color="primary" gutterBottom>Mon Emploi du Temps</Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 4 }}>
         Planning hebdomadaire des cours et activités.
+      </Typography>
+
+      {/* Official PDF / Image timetables section */}
+      <DocumentTimetableSection
+        documents={docSchedules}
+        isAdmin={false}
+        onRefresh={fetchData}
+        title="Emploi du temps officiel (PDF / Image)"
+        subtitle="Visualisez ou téléchargez le document officiel de l'emploi du temps de votre classe."
+      />
+
+      <Typography variant="h6" fontWeight="bold" color="primary" sx={{ mt: 4, mb: 2 }}>
+        Grille Hebdomadaire des Cours
       </Typography>
 
       <Grid container spacing={3}>

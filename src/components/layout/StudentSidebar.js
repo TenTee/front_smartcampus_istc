@@ -20,7 +20,7 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import { usePathname, useRouter } from 'next/navigation';
 import { studentRoutes } from '../../config/routes';
 import { ConfigContext } from '../../theme/ThemeRegistry';
-import { getMediaUrl } from '../../services/api/client';
+import { getMediaUrl, clearSession } from '../../services/api/client';
 import { useSidebar } from '../../context/SidebarContext';
 
 const EXPANDED_WIDTH = 260;
@@ -171,9 +171,7 @@ export default function StudentSidebar() {
             <Tooltip title={isCollapsed && !isMobile ? 'Déconnexion' : ''} placement="right" arrow>
               <ListItemButton
                 onClick={() => {
-                  localStorage.removeItem('token');
-                  localStorage.removeItem('refreshToken');
-                  document.cookie = 'token=; Max-Age=-99999999; path=/';
+                  clearSession();
                   handleNavigate('/login');
                 }}
                 sx={{

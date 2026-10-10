@@ -12,11 +12,10 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Paper,
   CircularProgress,
   Chip,
   Alert,
-  Divider
+  Divider,
 } from '@mui/material';
 import GavelIcon from '@mui/icons-material/Gavel';
 import { etudiantsService } from '../../../../services/api/services';

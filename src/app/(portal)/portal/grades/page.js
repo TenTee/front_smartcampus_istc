@@ -4,7 +4,6 @@ import React, { useEffect, useState } from 'react';
 import {
   Box,
   Typography,
-  Card,
   Table,
   TableBody,
   TableCell,
@@ -17,7 +16,7 @@ import {
   FormControl,
   Select,
   MenuItem,
-  InputLabel
+  InputLabel,
 } from '@mui/material';
 import { notesService } from '../../../../services/api/services';
 

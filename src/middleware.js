@@ -20,6 +20,7 @@ const protectedRoutes = [
   '/system',
   '/settings',
   '/formateur-portal',
+  '/coordonnateurs',
 ];
 
 // Routes accessibles sans authentification requise

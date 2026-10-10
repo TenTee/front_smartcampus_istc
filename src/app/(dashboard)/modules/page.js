@@ -20,7 +20,6 @@ import {
   MenuItem,
   Paper,
   Select,
-  Switch,
   Table,
   TableBody,
   TableCell,
@@ -29,7 +28,6 @@ import {
   TableRow,
   TextField,
   Typography,
-  FormControlLabel,
 } from '@mui/material';
 import { Add as AddIcon, Delete as DeleteIcon, Edit as EditIcon, Search as SearchIcon } from '@mui/icons-material';
 import { classesService, modulesService } from '../../../services/api/services';

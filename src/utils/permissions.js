@@ -1,8 +1,12 @@
 import { useState, useEffect } from 'react';
 
 export function isSuperUserOrAdmin(permissionsObj) {
+  // When a permissions snapshot is supplied, use it as the source of truth.
+  // This keeps SSR and the browser's first render consistent.
+  if (permissionsObj !== null && permissionsObj !== undefined) {
+    return Boolean(permissionsObj.is_superuser);
+  }
   if (typeof window === 'undefined') return false;
-  if (permissionsObj && permissionsObj.is_superuser) return true;
   const role = (localStorage.getItem('user_role') || '').toLowerCase().trim();
   return ['admin', 'superadmin', 'administrateur', 'adm', 'super admin', 'super-admin'].includes(role);
 }
@@ -55,11 +59,20 @@ export function hasAnyWriteAccess(permissions, keys) {
 }
 
 export function useUserPermissions() {
-  const [permissions, setPermissions] = useState(() => getStoredPermissions());
+  // Start identically during SSR and the browser's first render. Browser-only
+  // permissions are loaded in the effect after hydration.
+  const [permissions, setPermissions] = useState({});
 
   useEffect(() => {
-    setPermissions(getStoredPermissions());
-    const handleStorage = () => setPermissions(getStoredPermissions());
+    const loadPermissions = () => {
+      const stored = getStoredPermissions();
+      const role = (localStorage.getItem('user_role') || '').toLowerCase().trim();
+      const isAdminRole = ['admin', 'superadmin', 'administrateur', 'adm', 'super admin', 'super-admin'].includes(role);
+      setPermissions({ ...stored, is_superuser: Boolean(stored.is_superuser || isAdminRole) });
+    };
+
+    loadPermissions();
+    const handleStorage = () => loadPermissions();
     window.addEventListener('storage', handleStorage);
     window.addEventListener('appConfigChanged', handleStorage);
     return () => {
@@ -80,4 +93,3 @@ export function useUserPermissions() {
 
   return { permissions, canRead, canWrite, isSuperAdmin: isSuperUserOrAdmin(permissions) };
 }
-

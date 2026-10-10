@@ -10,10 +10,7 @@ import {
   TableRow,
   TableCell,
   TableBody,
-  CircularProgress,
-  Alert,
   Button,
-  IconButton,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -25,20 +22,18 @@ import {
   Select,
   MenuItem,
   Chip,
-  TablePagination,
   FormControlLabel,
   Switch,
 } from "@mui/material";
 import {
   Add as AddIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
   Download as DownloadIcon,
   FilterList as FilterListIcon,
   CalendarMonth as CalendarIcon,
 } from "@mui/icons-material";
 import {
   emploiDuTempsService,
+  emploiDuTempsDocumentsService,
   filieresV2Service,
   modulesService,
   formateursService,
@@ -54,9 +49,10 @@ import ImportExportModal from "../../../components/importExport/ImportExportModa
 import TableSkeleton from "../../../components/common/TableSkeleton";
 import ErrorState from "../../../components/common/ErrorState";
 import { useUserPermissions } from "../../../utils/permissions";
+import DocumentTimetableSection from "../../../components/schedule/DocumentTimetableSection";
 
 const JOURS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
-const HOURS = Array.from({ length: 11 }, (_, i) => i + 8); // 8h to 18h
+ // 8h to 18h
 
 const initialForm = {
   jour: "",
@@ -68,6 +64,7 @@ const initialForm = {
   classe: "",
   module: "",
   formateur: "",
+  date_effective: "",
 };
 
 export default function SchedulePage() {
@@ -77,8 +74,6 @@ export default function SchedulePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(20);
 
   // Filter states
   const [filterFiliere, setFilterFiliere] = useState("");
@@ -107,15 +102,17 @@ export default function SchedulePage() {
   const [formateurs, setFormateurs] = useState([]);
   const [cycleGlobals, setCycleGlobals] = useState([]);
   const [salles, setSalles] = useState([]);
+  const [docSchedules, setDocSchedules] = useState([]);
   const [openImportExport, setOpenImportExport] = useState(false);
 
   const fetchData = async () => {
     setLoading(true);
     setError("");
     try {
-      const [schedData, filD, cycD, classD, modD, formateurD, cgD, salleD] =
+      const [schedData, docData, filD, cycD, classD, modD, formateurD, cgD, salleD] =
         await Promise.all([
           emploiDuTempsService.list(),
+          emploiDuTempsDocumentsService.list().catch(() => []),
           filieresV2Service.list(),
           cyclesService.list(),
           classesService.list(),
@@ -126,6 +123,9 @@ export default function SchedulePage() {
         ]);
       setSchedules(
         Array.isArray(schedData) ? schedData : schedData?.results || [],
+      );
+      setDocSchedules(
+        Array.isArray(docData) ? docData : docData?.results || [],
       );
       setFilieres(Array.isArray(filD) ? filD : filD?.results || []);
       setAllCycles(Array.isArray(cycD) ? cycD : cycD?.results || []);
@@ -255,6 +255,7 @@ export default function SchedulePage() {
         classe: item.classe || "",
         module: item.module || "",
         formateur: item.formateur || "",
+        date_effective: item.date_effective || "",
       });
     } else {
       setIsEditing(false);
@@ -348,6 +349,7 @@ export default function SchedulePage() {
             niveau: tc.niveau_id || tc.niveau,
             module: Number(form.module),
             formateur: Number(form.formateur),
+            date_effective: form.date_effective || null,
           };
           await emploiDuTempsService.create(payload);
         }
@@ -374,6 +376,7 @@ export default function SchedulePage() {
           niveau: selectedClass.niveau_id || selectedClass.niveau,
           module: Number(form.module),
           formateur: Number(form.formateur),
+          date_effective: form.date_effective || null,
         };
 
         if (isEditing) {
@@ -405,22 +408,6 @@ export default function SchedulePage() {
     });
   };
 
-  const exportExcel = () => {
-    // Simple CSV export for now
-    let csv = "Jour,Horaire,Module,Formateur,Salle\n";
-    filteredSchedules.forEach((s) => {
-      csv += `${s.jour},${s.heure_debut}-${s.heure_fin},${s.module_nom},${s.formateur_nom},${s.salle_nom || s.salle}\n`;
-    });
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute("download", `Emploi_du_temps_${filterClasse}.csv`);
-    link.style.visibility = "hidden";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
 
   const handleDelete = async () => {
     if (!selectedId) return;
@@ -469,17 +456,6 @@ export default function SchedulePage() {
     selectedId,
   ]);
 
-  const filteredModulesForForm = React.useMemo(() => {
-    if (!form.classe) return [];
-    const selectedClass = allClasses.find(
-      (c) => Number(c.id) === Number(form.classe),
-    );
-    if (!selectedClass || !selectedClass.modules) return [];
-    const classModuleIds = selectedClass.modules
-      .map((m) => (typeof m === "object" ? m.id : m))
-      .map(Number);
-    return modules.filter((m) => classModuleIds.includes(Number(m.id)));
-  }, [form.classe, allClasses, modules]);
 
   const timeToMinutes = (time) => {
     if (!time) return 0;
@@ -787,6 +763,15 @@ export default function SchedulePage() {
         )}
       </Paper>
 
+      {/* SECTION DOCUMENTS ET EMPLOIS DU TEMPS IMPORTÉS */}
+      <DocumentTimetableSection
+        documents={docSchedules}
+        classes={allClasses}
+        isAdmin={canWritePedagogie}
+        selectedClasseId={filterClasse}
+        onRefresh={fetchData}
+      />
+
       {loading ? (
         <TableSkeleton rows={8} columns={7} />
       ) : error ? (
@@ -803,7 +788,7 @@ export default function SchedulePage() {
           }}
         >
           <Typography color="text.secondary">
-            Veuillez sélectionner une classe pour afficher l'emploi du temps.
+            Veuillez sélectionner une classe pour afficher la grille de l&apos;emploi du temps.
           </Typography>
         </Paper>
       )}
@@ -1068,6 +1053,19 @@ export default function SchedulePage() {
                   ))}
                 </Select>
               </FormControl>
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                type="date"
+                label="Date d'effet (optionnelle / antidatage)"
+                InputLabelProps={{ shrink: true }}
+                value={form.date_effective || ""}
+                onChange={(e) =>
+                  setForm({ ...form, date_effective: e.target.value })
+                }
+                helperText="Sélectionnez une date spécifique ou passée si vous souhaitez antidater ce créneau"
+              />
             </Grid>
           </Grid>
         </DialogContent>

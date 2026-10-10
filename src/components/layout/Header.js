@@ -7,7 +7,6 @@ import {
   Typography,
   IconButton,
   Box,
-  InputBase,
   Badge,
   Avatar,
   Menu,
@@ -20,7 +19,6 @@ import {
   ListItemText,
   Tooltip,
 } from '@mui/material';
-import SearchIcon from '@mui/icons-material/Search';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import LogoutIcon from '@mui/icons-material/Logout';
 import PersonIcon from '@mui/icons-material/Person';
@@ -34,6 +32,7 @@ import { useAcademicYear } from '../../context/AcademicYearContext';
 import { useSidebar } from '../../context/SidebarContext';
 import { usersService, rolesService, revenusService, depensesService, demandesService, preinscriptionsService } from '../../services/api/services';
 import { ConfigContext } from '../../theme/ThemeRegistry';
+import { clearSession } from '../../services/api/client';
 
 export default function Header() {
   const { toggleSidebar } = useSidebar();
@@ -48,7 +47,9 @@ export default function Header() {
 
   async function fetchNotifications() {
     const role = localStorage.getItem('user_role');
-    if (role === 'etudiant') return; // Don't fetch admin notifications for students
+    // Notifications d'administration : jamais pour les comptes portail (étudiant, formateur),
+    // qui n'ont pas accès à ces données.
+    if (role === 'etudiant' || role === 'formateur' || localStorage.getItem('is_formateur') === 'true') return;
 
     try {
         const [revs, deps, dems, preins] = await Promise.all([
@@ -94,8 +95,11 @@ export default function Header() {
         (Array.isArray(dems) ? dems : dems?.results || []).forEach(d => {
             const dateStr = d.date_demande || d.created_at;
             if (!dateStr) return;
-            const valid = d.statut === 'Approuvée';
-            const attente = d.statut === 'En attente';
+            // Codes de statut renvoyés par l'API (et non les libellés affichés) : auparavant
+            // toutes les demandes apparaissaient comme « refusées ».
+            if (d.statut === 'brouillon') return;
+            const valid = d.statut === 'approuvee' || d.statut === 'livree';
+            const attente = d.statut === 'soumise' || d.statut === 'en_cours';
             notifs.push({
                 id: `dem-${d.id}`,
                 title: valid ? `Demande approuvée` : attente ? `Nouvelle demande` : `Demande refusée`,
@@ -243,13 +247,7 @@ export default function Header() {
 
   const handleLogout = () => {
     handleClose();
-    localStorage.removeItem('token');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('user');
-    localStorage.removeItem('user_role');
-    localStorage.removeItem('user_permissions');
-    localStorage.removeItem('loginTime');
-    document.cookie = 'token=; Max-Age=-99999999; path=/';
+    clearSession();
     router.push('/login');
   };
 

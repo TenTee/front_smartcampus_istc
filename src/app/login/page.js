@@ -23,7 +23,7 @@ import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { authService } from "../../services/api/services";
-import { getApiErrorMessage } from "../../services/api/client";
+import { getApiErrorMessage, clearSession } from "../../services/api/client";
 import RecaptchaV2 from "../../components/RecaptchaV2";
 
 const schema = yup.object({
@@ -71,6 +71,8 @@ export default function LoginPage() {
         throw new Error("Token introuvable dans la reponse API.");
       }
 
+      // Repartir d'une session propre (flags d'un utilisateur précédent sur ce navigateur).
+      clearSession();
       localStorage.setItem("token", accessToken);
       if (data?.refresh) {
         localStorage.setItem("refreshToken", data.refresh);

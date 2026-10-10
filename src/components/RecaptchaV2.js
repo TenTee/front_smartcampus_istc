@@ -7,9 +7,7 @@ let recaptchaPromise;
 
 function loadRecaptcha() {
   if (typeof window === "undefined") {
-    return Promise.reject(
-      new Error("reCAPTCHA can only be loaded in the browser."),
-    );
+    return Promise.resolve(null);
   }
 
   if (window.grecaptcha && window.grecaptcha.render) {
@@ -20,17 +18,53 @@ function loadRecaptcha() {
     return recaptchaPromise;
   }
 
-  recaptchaPromise = new Promise((resolve, reject) => {
+  recaptchaPromise = new Promise((resolve) => {
     const callbackName = "__smartCampusRecaptchaOnLoad";
-    window[callbackName] = () => {
+    const cleanup = () => {
+      recaptchaPromise = null;
+      delete window[callbackName];
+    };
+
+    const resolveSuccess = () => {
+      cleanup();
       if (window.grecaptcha && window.grecaptcha.render) {
         resolve(window.grecaptcha);
       } else {
-        reject(new Error("Google reCAPTCHA failed to initialize."));
+        resolve(null);
       }
     };
 
-    if (document.getElementById(SCRIPT_ID)) {
+    const fail = () => {
+      cleanup();
+      resolve(null);
+    };
+
+    window[callbackName] = () => {
+      resolveSuccess();
+    };
+
+    const existingScript = document.getElementById(SCRIPT_ID);
+    if (existingScript) {
+      if (existingScript.dataset.loaded === "true") {
+        resolveSuccess();
+        return;
+      }
+
+      existingScript.addEventListener(
+        "load",
+        () => {
+          resolveSuccess();
+        },
+        { once: true },
+      );
+
+      existingScript.addEventListener(
+        "error",
+        () => {
+          fail();
+        },
+        { once: true },
+      );
       return;
     }
 
@@ -39,8 +73,12 @@ function loadRecaptcha() {
     script.src = `https://www.google.com/recaptcha/api.js?onload=${callbackName}&render=explicit`;
     script.async = true;
     script.defer = true;
-    script.onerror = () =>
-      reject(new Error("Failed to load Google reCAPTCHA script."));
+    script.onerror = () => {
+      fail();
+    };
+    script.onload = () => {
+      script.dataset.loaded = "true";
+    };
     document.head.appendChild(script);
   });
 
@@ -56,9 +94,7 @@ export default function RecaptchaV2({
   sx,
 }) {
   const siteKey =
-    siteKeyProp ||
-    process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY ||
-    "6LdDvWstAAAAAG87XCrn9ISoPwfAhk3jD6EE67qD";
+    siteKeyProp || process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || "";
 
   const containerRef = useRef(null);
   const widgetIdRef = useRef(null);
@@ -77,14 +113,25 @@ export default function RecaptchaV2({
   }, []);
 
   useEffect(() => {
-    if (!siteKey) return undefined;
+    if (!siteKey) {
+      if (widgetIdRef.current !== null) {
+        widgetIdRef.current = null;
+      }
+      return undefined;
+    }
+
     if (widgetIdRef.current !== null) return undefined;
 
     let mounted = true;
-    loadRecaptcha()
-      .then((grecaptcha) => {
-        if (!mounted || !containerRef.current || widgetIdRef.current !== null)
-          return;
+    loadRecaptcha().then((grecaptcha) => {
+      if (!mounted || !containerRef.current || widgetIdRef.current !== null)
+        return;
+
+      if (!grecaptcha || !grecaptcha.render) {
+        return;
+      }
+
+      try {
         widgetIdRef.current = grecaptcha.render(containerRef.current, {
           sitekey: siteKey,
           callback: handleCallback,
@@ -93,10 +140,11 @@ export default function RecaptchaV2({
           size,
           tabindex,
         });
-      })
-      .catch((error) => {
-        console.error(error);
-      });
+      } catch (error) {
+        console.warn("reCAPTCHA render failed:", error);
+        widgetIdRef.current = null;
+      }
+    });
 
     return () => {
       mounted = false;

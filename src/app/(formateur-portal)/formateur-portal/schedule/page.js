@@ -11,19 +11,37 @@ import {
 } from '@mui/material';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import RoomIcon from '@mui/icons-material/Room';
-import { formateurPortalService } from '../../../../services/api/services';
+import { formateurPortalService, emploiDuTempsDocumentsService } from '../../../../services/api/services';
+import DocumentTimetableSection from '../../../../components/schedule/DocumentTimetableSection';
 
 const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
 
 export default function EmploiDuTempsPage() {
   const [schedule, setSchedule] = useState([]);
+  const [docSchedules, setDocSchedules] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const fetchData = async () => {
+    try {
+      // allSettled : un échec sur les documents ne doit pas masquer la grille (et inversement)
+      const [schedRes, docsRes] = await Promise.allSettled([
+        formateurPortalService.monEmploiDuTemps(),
+        emploiDuTempsDocumentsService.getForFormateur(),
+      ]);
+      const toList = (d) => (Array.isArray(d) ? d : d?.results || []);
+      if (schedRes.status === 'fulfilled') setSchedule(toList(schedRes.value));
+      else console.error("Erreur de chargement de la grille :", schedRes.reason);
+      if (docsRes.status === 'fulfilled') setDocSchedules(toList(docsRes.value));
+      else console.error("Erreur de chargement des documents :", docsRes.reason);
+    } catch (err) {
+      console.error("Erreur de chargement de l'emploi du temps formateur:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    formateurPortalService.monEmploiDuTemps()
-      .then(setSchedule)
-      .catch(console.error)
-      .finally(() => setLoading(false));
+    fetchData();
   }, []);
 
   if (loading) {
@@ -46,6 +64,19 @@ export default function EmploiDuTempsPage() {
   return (
     <Box>
       <Typography variant="h5" fontWeight="bold" gutterBottom>Mon Emploi du Temps</Typography>
+
+      {/* Documents d'Emplois du Temps pour les classes du formateur */}
+      <DocumentTimetableSection
+        documents={docSchedules}
+        isAdmin={false}
+        onRefresh={fetchData}
+        title="Emplois du temps officiels des classes (PDF / Images)"
+        subtitle="Consultez et téléchargez les plannings officiels transmis pour vos classes."
+      />
+
+      <Typography variant="h6" fontWeight="bold" color="primary" sx={{ mt: 3, mb: 2 }}>
+        Planning Hebdomadaire par Jour
+      </Typography>
 
       <Grid container spacing={2}>
         {JOURS.map(jour => (

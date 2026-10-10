@@ -23,6 +23,7 @@ import SchoolIcon from '@mui/icons-material/School';
 import PeopleIcon from '@mui/icons-material/People';
 import { useRouter } from 'next/navigation';
 import { formateurPortalService } from '../../../services/api/services';
+import MesHeuresWidget from '../../../components/vacations/MesHeuresWidget';
 
 export default function FormateurDashboard() {
   const router = useRouter();
@@ -179,6 +180,9 @@ export default function FormateurDashboard() {
           </Grid>
         ))}
       </Grid>
+
+      {/* Heures du mois (pointage coordonnateur) */}
+      <MesHeuresWidget />
 
       {/* Prochaines séances */}
       {prochaines_seances?.length > 0 && (

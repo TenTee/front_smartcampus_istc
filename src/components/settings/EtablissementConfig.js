@@ -1,7 +1,16 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Paper, Grid, TextField, Button, CircularProgress, Divider, Avatar, IconButton } from '@mui/material';
+import {
+  Box,
+  Typography,
+  Paper,
+  Grid,
+  TextField,
+  Button,
+  CircularProgress,
+  Avatar,
+} from '@mui/material';
 import PhotoCamera from '@mui/icons-material/PhotoCamera';
 import { configurationEtablissementService } from '../../services/api/services';
 import { getMediaUrl } from '../../services/api/client';

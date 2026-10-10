@@ -10,7 +10,6 @@ import {
 } from "../../utils/importExportUtils";
 import { downloadFile, validateRows } from "../../utils/csvUtils";
 import * as apiServices from "../../services/api/services";
-import { notesV2Service } from "../../services/api/services";
 
 export default function ImportExportModal({
   entity = "inventaires",
@@ -25,11 +24,9 @@ export default function ImportExportModal({
   const config = getEntityImportConfig(entity);
 
   useEffect(() => {
-    if (entity !== "notes") {
-      fetchLookupDataForEntity(entity)
-        .then(setLookupData)
-        .catch(() => setLookupData({}));
-    }
+    fetchLookupDataForEntity(entity)
+      .then(setLookupData)
+      .catch(() => setLookupData({}));
   }, [entity]);
 
   function getServiceForEntity(e) {
@@ -43,8 +40,6 @@ export default function ImportExportModal({
         return apiServices.personnelsService;
       case "emploi-du-temps":
         return apiServices.emploiDuTempsService;
-      case "notes":
-        return notesV2Service;
       default:
         return null;
     }
@@ -54,19 +49,6 @@ export default function ImportExportModal({
     setStatus("Préparation du modèle...");
     setErrors([]);
     try {
-      if (entity === "notes") {
-        const blob = await notesV2Service.exportTemplate({});
-        const url = window.URL.createObjectURL(new Blob([blob]));
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "notes_template.xlsx";
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(url);
-        setStatus("Modèle téléchargé");
-        return;
-      }
 
       const entityConfig = config || { headers: [], required: [] };
       const workbook = buildTemplateWorkbook(entity, entityConfig, lookupData);
@@ -107,13 +89,6 @@ export default function ImportExportModal({
         entityConfig.headers = Object.keys(items[0] || {});
       }
 
-      // For notes entity, exports should be contextual (handled by views)
-      if (entity === "notes") {
-        throw new Error(
-          "L'export principal des notes doit être lancé depuis la vue 'Notes par classe'.",
-        );
-      }
-
       const csv = createCsvFromExport(entity, items, entityConfig, lookupData);
       downloadFile(`${entity}_export.csv`, csv);
       setStatus("Export terminé");
@@ -130,14 +105,6 @@ export default function ImportExportModal({
     setErrors([]);
 
     try {
-      if (entity === "notes") {
-        const formData = new FormData();
-        formData.append("file", file);
-        await notesV2Service.importNotes(formData);
-        setStatus("Import notes terminé");
-        onComplete && onComplete();
-        return;
-      }
 
       const { headers, rows } = await parseImportFile(file);
       const entityConfig = config || { headers, required: [] };
@@ -210,9 +177,7 @@ export default function ImportExportModal({
       </div>
       <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
         <button onClick={handleDownloadTemplate}>Télécharger modèle</button>
-        {entity !== "notes" && (
-          <button onClick={handleExport}>Exporter CSV</button>
-        )}
+        <button onClick={handleExport}>Exporter CSV</button>
         <label style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
           <input
             type="file"

@@ -1,21 +1,10 @@
 import * as XLSX from "xlsx";
-import {
-  arrayToCsv,
-  downloadFile,
-  parseCsvText,
-  validateRows,
-} from "./csvUtils";
+import { arrayToCsv, downloadFile, parseCsvText } from "./csvUtils";
 import {
   classesService,
-  etudiantsService,
   formateursService,
-  inventairesService,
   modulesService,
-  niveauxService,
-  personnelsService,
   sallesService,
-  emploiDuTempsService,
-  filieresV2Service,
 } from "../services/api/services";
 
 const MULTI_VALUE_SEPARATORS = /[|;,]+/;

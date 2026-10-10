@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Alert, AlertTitle, Button, Box } from '@mui/material';
+import { Alert, AlertTitle, Button } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 
 /**

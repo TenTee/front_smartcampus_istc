@@ -67,7 +67,6 @@ import {
   inscriptionsV2Service,
   paiementsService,
   paiementAlertsService,
-  paiementPlansService,
   studentScheduleService,
 } from "../../../services/api/services";
 import { getApiErrorMessage, getMediaUrl } from "../../../services/api/client";
@@ -153,39 +152,8 @@ function FileUploadButton({ label, onChange, multiple, files }) {
   );
 }
 
-function normalizeDateForApi(value) {
-  if (!value) return "";
-  if (value instanceof Date) {
-    return value.toISOString().slice(0, 10);
-  }
-  const stringValue = String(value).trim();
-  if (!stringValue) return "";
-  if (/^\d{4}-\d{2}-\d{2}$/.test(stringValue)) {
-    return stringValue;
-  }
-  const slashMatch = stringValue.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
-  if (slashMatch) {
-    const [, day, month, year] = slashMatch;
-    return `${year.padStart(4, "0")}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
-  }
-  const parsed = new Date(stringValue);
-  return Number.isNaN(parsed.getTime())
-    ? stringValue
-    : parsed.toISOString().slice(0, 10);
-}
 
-function paymentDateFieldProps() {
-  return {
-    type: "text",
-    placeholder: "YYYY-MM-DD",
-    inputProps: { inputMode: "numeric", maxLength: 10 },
-    helperText: "Format attendu: YYYY-MM-DD",
-  };
-}
 
-function isIsoDate(value) {
-  return /^\d{4}-\d{2}-\d{2}$/.test(String(value || "").trim());
-}
 
 const COUNTRY_CODES = [
   { code: "+241", country: "GA", label: "Gabon (+241)" },

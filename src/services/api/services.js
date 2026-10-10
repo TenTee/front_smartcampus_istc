@@ -7,6 +7,7 @@ function createCrudService(basePath) {
     detail: (id) => apiRequest({ url: idPath(basePath, id), method: 'GET' }),
     create: (payload) => apiRequest({ url: basePath, method: 'POST', data: payload }),
     update: (id, payload) => apiRequest({ url: idPath(basePath, id), method: 'PUT', data: payload }),
+    patch: (id, payload) => apiRequest({ url: idPath(basePath, id), method: 'PATCH', data: payload }),
     remove: (id) => apiRequest({ url: idPath(basePath, id), method: 'DELETE' }),
     delete: (id) => apiRequest({ url: idPath(basePath, id), method: 'DELETE' }),
   };
@@ -19,13 +20,23 @@ export const authService = {
 };
 
 export const assiduiteService = createCrudService(API_ENDPOINTS.assiduite);
-export const communicationService = createCrudService(API_ENDPOINTS.communication);
 export const congesService = createCrudService(API_ENDPOINTS.conges);
 export const demandesService = createCrudService(API_ENDPOINTS.demandes);
 export const depensesService = createCrudService(API_ENDPOINTS.depenses);
 export const emploiDuTempsService = {
   ...createCrudService(API_ENDPOINTS.emploiDuTemps),
   me: () => apiRequest({ url: `${API_ENDPOINTS.emploiDuTemps}me/`, method: 'GET' }),
+};
+export const emploiDuTempsDocumentsService = {
+  ...createCrudService(API_ENDPOINTS.emploiDuTempsDocuments),
+  upload: (formData) => apiRequest({
+    url: API_ENDPOINTS.emploiDuTempsDocuments,
+    method: 'POST',
+    data: formData,
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  getMine: () => apiRequest({ url: `${API_ENDPOINTS.emploiDuTempsDocuments}me/`, method: 'GET' }),
+  getForFormateur: () => apiRequest({ url: `${API_ENDPOINTS.emploiDuTempsDocuments}formateur/`, method: 'GET' }),
 };
 export const etudiantsService = {
   ...createCrudService(API_ENDPOINTS.etudiants),
@@ -53,17 +64,6 @@ export const formateursService = {
   patchFormateur: (id, payload) => apiRequest({ url: idPath(API_ENDPOINTS.formateurs, id), method: 'PATCH', data: payload }),
   generateAccount: (id) => apiRequest({ url: idPath(API_ENDPOINTS.formateurs, `${id}/generate-account`), method: 'POST' }),
   resetPassword: (userId) => apiRequest({ url: idPath(API_ENDPOINTS.users, `${userId}/reset-password`), method: 'POST' }),
-};
-export const formationsService = {
-  ...createCrudService(API_ENDPOINTS.formations),
-  detail: (id) => apiRequest({ url: idPath(API_ENDPOINTS.formations, id), method: 'GET' }),
-};
-export const niveauxService = {
-  ...createCrudService(API_ENDPOINTS.niveaux),
-  patch: (id, payload) => apiRequest({ url: idPath(API_ENDPOINTS.niveaux, id), method: 'PATCH', data: payload }),
-};
-export const inscriptionsService = {
-  create: (payload) => apiRequest({ url: API_ENDPOINTS.inscriptions, method: 'POST', data: payload }),
 };
 export const inventairesService = createCrudService(API_ENDPOINTS.inventaires);
 export const modulesService = {
@@ -97,7 +97,6 @@ export const paiementsService = {
   aggregated: (params) => apiRequest({ url: API_ENDPOINTS.paiementsAggregated, method: 'GET', params }),
   dashboard: () => apiRequest({ url: API_ENDPOINTS.paiementsDashboard, method: 'GET' }),
 };
-export const paiementPoliciesService = createCrudService(API_ENDPOINTS.paiementsConfigurations);
 export const paiementPlansService = createCrudService(API_ENDPOINTS.paiementsPlans);
 export const paiementAlertsService = {
   list: (params) => apiRequest({ url: API_ENDPOINTS.paiementsAlerts, method: 'GET', params }),
@@ -116,7 +115,6 @@ export const usersService = {
   ...createCrudService(API_ENDPOINTS.users),
   resetPassword: (id) => apiRequest({ url: idPath(API_ENDPOINTS.users, `${id}/reset-password`), method: 'POST' }),
 };
-export const rôlesService = createCrudService(API_ENDPOINTS.userRoles); // Typo correction not strictly necessary but ignored for now. Use original rolesService.
 export const rolesService = createCrudService(API_ENDPOINTS.userRoles);
 export const demandeursService = {
   list: () => apiRequest({ url: API_ENDPOINTS.demandeurs, method: 'GET' }),
@@ -128,17 +126,8 @@ export const preinscriptionsService = {
   reject: (id) => apiRequest({ url: idPath(API_ENDPOINTS.preinscriptions, `${id}/reject`), method: 'POST' }),
 };
 export const fraisService = createCrudService(API_ENDPOINTS.frais);
-export const paiementsV2Service = createCrudService(API_ENDPOINTS.paiementsV2);
 export const notesV2Service = {
   ...createCrudService(API_ENDPOINTS.notesV2),
-  me: (params) => apiRequest({ url: `${API_ENDPOINTS.notesV2}me/`, method: 'GET', params }),
-  studentDetails: (etudiantId, params) => apiRequest({ url: idPath(API_ENDPOINTS.notesV2, `${etudiantId}/details`), method: 'GET', params }),
-  byModule: (params) => apiRequest({ url: `${API_ENDPOINTS.notesV2}par-module/`, method: 'GET', params }),
-  byFiliereNiveau: (params) => apiRequest({ url: `${API_ENDPOINTS.notesV2}par-filiere-niveau/`, method: 'GET', params }),
-  exportTemplate: (params) => apiRequest({ url: API_ENDPOINTS.notesV2ExportTemplate, method: 'GET', params, responseType: 'blob' }),
-  exportTemplateNiveau: (params) => apiRequest({ url: API_ENDPOINTS.notesV2ExportTemplateNiveau, method: 'GET', params, responseType: 'blob' }),
-  importNotes: (formData) => apiRequest({ url: API_ENDPOINTS.notesV2Import, method: 'POST', data: formData, headers: { 'Content-Type': 'multipart/form-data' } }),
-  importNotesNiveau: (formData) => apiRequest({ url: API_ENDPOINTS.notesV2ImportNiveau, method: 'POST', data: formData, headers: { 'Content-Type': 'multipart/form-data' } }),
   batchEntry: (params) => apiRequest({ url: `${API_ENDPOINTS.notesV2}saisie-groupee/`, method: 'GET', params }),
   batchSave: (payload) => apiRequest({ url: `${API_ENDPOINTS.notesV2}batch-save/`, method: 'POST', data: payload }),
 };
@@ -156,6 +145,31 @@ export const formateurPortalService = {
   togglePartageEpreuve: (id) => apiRequest({ url: `${API_ENDPOINTS.formateurPortal}toggle-partage-epreuve/${id}/`, method: 'PATCH' }),
 };
 
+const V = () => API_ENDPOINTS.vacations;
+export const vacationsService = {
+  // Administration (pédagogie) : coordonnateurs de filière
+  coordinations: createCrudService(`${API_ENDPOINTS.vacations}coordinations/`),
+  // Pointages (coordonnateur)
+  pointages: createCrudService(`${API_ENDPOINTS.vacations}pointages/`),
+  // Espace coordonnateur (portail formateur)
+  mesFilieres: () => apiRequest({ url: `${V()}coordonnateur/mes-filieres/`, method: 'GET' }),
+  enseignants: (params) => apiRequest({ url: `${V()}coordonnateur/enseignants/`, method: 'GET', params }),
+  seances: (params) => apiRequest({ url: `${V()}coordonnateur/seances/`, method: 'GET', params }),
+  recapsCoordonnateur: (params) => apiRequest({ url: `${V()}coordonnateur/recaps/`, method: 'GET', params }),
+  cloturerRecap: (id, payload = {}) => apiRequest({ url: `${V()}coordonnateur/recaps/${id}/cloturer/`, method: 'POST', data: payload }),
+  cloturerTout: (payload) => apiRequest({ url: `${V()}coordonnateur/recaps/cloturer-tout/`, method: 'POST', data: payload }),
+  rouvrirRecap: (id) => apiRequest({ url: `${V()}coordonnateur/recaps/${id}/rouvrir/`, method: 'POST' }),
+  // Espace enseignant
+  mesHeures: (params) => apiRequest({ url: `${V()}mes-heures/`, method: 'GET', params }),
+  historique: () => apiRequest({ url: `${V()}mes-heures/historique/`, method: 'GET' }),
+  // Administration (finance) : validation des récapitulatifs
+  recaps: (params) => apiRequest({ url: `${V()}recaps/`, method: 'GET', params }),
+  recapPointages: (id) => apiRequest({ url: `${V()}recaps/${id}/pointages/`, method: 'GET' }),
+  validerRecap: (id) => apiRequest({ url: `${V()}recaps/${id}/valider/`, method: 'POST' }),
+  rejeterRecap: (id, motif) => apiRequest({ url: `${V()}recaps/${id}/rejeter/`, method: 'POST', data: { motif } }),
+  heuresValidees: (params) => apiRequest({ url: `${V()}recaps/heures-validees/`, method: 'GET', params }),
+};
+
 export const coursDocumentsService = {
   ...createCrudService(API_ENDPOINTS.formateurCoursDocuments),
   toggleVisibilite: (id) => apiRequest({ url: `${API_ENDPOINTS.formateurCoursDocuments}${id}/toggle-visibilite/`, method: 'PATCH' }),
@@ -163,15 +177,9 @@ export const coursDocumentsService = {
   listForStudents: () => apiRequest({ url: API_ENDPOINTS.formateurCoursEtudiants, method: 'GET' }),
 };
 
-export const domainesService = {
-  ...createCrudService(API_ENDPOINTS.domaines),
-  listFilieres: (id) => apiRequest({ url: idPath(API_ENDPOINTS.domaines, `${id}/filieres`), method: 'GET' })
-};
+export const domainesService = createCrudService(API_ENDPOINTS.domaines);
 
-export const facultesService = {
-  ...createCrudService(API_ENDPOINTS.facultes),
-  listDomaines: (id) => apiRequest({ url: idPath(API_ENDPOINTS.facultes, `${id}/domaines`), method: 'GET' })
-};
+export const facultesService = createCrudService(API_ENDPOINTS.facultes);
 export const filieresV2Service = {
   ...createCrudService(API_ENDPOINTS.filieresV2),
   listSpecialites: (id) => apiRequest({ url: idPath(API_ENDPOINTS.filieresV2, `${id}/specialites`), method: 'GET' })
@@ -181,7 +189,6 @@ export const classesService = createCrudService(API_ENDPOINTS.classes);
 export const cyclesService = createCrudService(API_ENDPOINTS.cycles);
 export const cycleGlobalsService = createCrudService(API_ENDPOINTS.cyclesGlobaux);
 export const levelsV2Service = createCrudService(API_ENDPOINTS.levelsV2);
-export const coursesV2Service = createCrudService(API_ENDPOINTS.coursesV2);
 export const anneesAcademiquesService = createCrudService(API_ENDPOINTS.anneesAcademiques);
 export const semestresService = createCrudService(API_ENDPOINTS.semestres);
 export const epreuvesService = createCrudService(API_ENDPOINTS.epreuves);
@@ -189,8 +196,6 @@ export const epreuvesService = createCrudService(API_ENDPOINTS.epreuves);
 epreuvesService.patch = (id, payload) => apiRequest({ url: idPath(API_ENDPOINTS.epreuves, id), method: 'PATCH', data: payload });
 export const inscriptionsV2Service = createCrudService(API_ENDPOINTS.inscriptionsV2);
 export const evaluationsService = createCrudService(API_ENDPOINTS.evaluations);
-export const affectationsService = createCrudService(API_ENDPOINTS.affectations);
-export const emploisDuTempsV2Service = createCrudService(API_ENDPOINTS.emploisDuTempsV2);
 export const parametresGlobauxService = {
   ...createCrudService(API_ENDPOINTS.parametresGlobaux),
   getStats: async () => {

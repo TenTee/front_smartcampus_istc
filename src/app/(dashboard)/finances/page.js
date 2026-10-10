@@ -2,26 +2,44 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  Box, Card, CardContent, Typography, Grid, Button, Table, TableBody,
-  TableCell, TableContainer, TableHead, TableRow, Paper, Chip,
-  Tabs, Tab, Dialog, DialogTitle, DialogContent, DialogActions,
-  TextField, FormControl, InputLabel, Select, MenuItem, IconButton,
-  Snackbar, Alert, CircularProgress, TablePagination, Divider,
-  LinearProgress, Tooltip
+  Box,
+  Card,
+  CardContent,
+  Typography,
+  Grid,
+  Button,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  Chip,
+  Tabs,
+  Tab,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  IconButton,
+  Snackbar,
+  Alert,
+  CircularProgress,
+  TablePagination,
+  LinearProgress,
 } from '@mui/material';
-import DownloadIcon from '@mui/icons-material/Download';
-import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import PaymentsIcon from '@mui/icons-material/Payments';
-import ReceiptIcon from '@mui/icons-material/Receipt';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
-import TrendingDownIcon from '@mui/icons-material/TrendingDown';
-import PeopleIcon from '@mui/icons-material/People';
-import WarningAmberIcon from '@mui/icons-material/WarningAmber';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import SchoolIcon from '@mui/icons-material/School';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import { formatDate } from '../../../utils/formatters';
@@ -37,7 +55,6 @@ import { getApiErrorMessage } from '../../../services/api/client';
 import { useAcademicYear } from '../../../context/AcademicYearContext';
 import CardSkeletonGrid from '../../../components/common/CardSkeleton';
 import TableSkeleton from '../../../components/common/TableSkeleton';
-import ErrorState from '../../../components/common/ErrorState';
 import { useUserPermissions } from '../../../utils/permissions';
 
 const CATEGORIES_DEPENSE = ["Materiel", "Entretien", "Logistique", "Activites", "Autres"];

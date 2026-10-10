@@ -215,7 +215,7 @@ export default function DocHero({ searchSearchTerm, setSearchTerm, totalDocsCoun
               </Typography>
             </Box>
 
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1, display: { xs: "none", sm: "flex" } }}>
+            <Box sx={{ alignItems: "center", gap: 1, display: { xs: "none", sm: "flex" } }}>
               <FileDownloadIcon sx={{ color: "#FBBF24", fontSize: 20 }} />
               <Typography variant="body2" sx={{ fontWeight: 600, color: "#F1F5F9" }}>
                 Téléchargement Libre PDF

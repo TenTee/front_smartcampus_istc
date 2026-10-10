@@ -1,7 +1,14 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { Box, Card, CardContent, Typography, Grid, Paper, CircularProgress, Alert } from '@mui/material';
+import React, { useEffect, useState, useCallback } from 'react';
+import {
+  Box,
+  Card,
+  CardContent,
+  Typography,
+  Grid,
+  Paper,
+} from '@mui/material';
 import PeopleIcon from '@mui/icons-material/People';
 import PersonIcon from '@mui/icons-material/Person';
 import SchoolIcon from '@mui/icons-material/School';
@@ -82,11 +89,12 @@ export default function Dashboard() {
   const [financesData, setFinancesData] = useState([]);
   const [filieresData, setFilieresData] = useState([]);
 
-  useEffect(() => {
-    setIsClient(true);
-    const loadDashboardData = async () => {
+  // Défini au niveau du composant : le bouton « Réessayer » de l'erreur l'appelait alors
+  // qu'il n'existait que dans l'effet (ReferenceError → page blanche).
+  const loadDashboardData = useCallback(async () => {
       try {
         setLoading(true);
+        setError(null);
         const [etudiantsRes, formateursRes, filieresRes, revenusRes, depensesRes, preinsRes] = await Promise.all([
           etudiantsService.list().catch(() => ({ results: [] })),
           formateursService.list().catch(() => ({ results: [] })),
@@ -158,9 +166,12 @@ export default function Dashboard() {
       } finally {
         setLoading(false);
       }
-    };
+  }, [selectedYear?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    setIsClient(true);
     loadDashboardData();
-  }, [selectedYear?.id]);
+  }, [loadDashboardData]);
 
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ffc658'];
 

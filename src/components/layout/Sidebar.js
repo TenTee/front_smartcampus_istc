@@ -9,7 +9,6 @@ import {
   ListItemIcon,
   ListItemText,
   Box,
-  Typography,
   Divider,
   Collapse,
   Tooltip,
@@ -23,7 +22,7 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import { usePathname, useRouter } from 'next/navigation';
 import { routes, bottomRoutes } from '../../config/routes';
 import { ConfigContext } from '../../theme/ThemeRegistry';
-import { getMediaUrl } from '../../services/api/client';
+import { getMediaUrl, clearSession } from '../../services/api/client';
 import { useSidebar } from '../../context/SidebarContext';
 import { hasReadAccess } from '../../utils/permissions';
 
@@ -121,6 +120,7 @@ export default function Sidebar() {
         'Emploi du temps',
         'Assiduité',
         "Banque d'épreuves",
+        'Coordonnateurs',
       ];
       if (pGroup.includes(route.label)) return hasAccess(perms.can_manage_pedagogie);
 
@@ -134,6 +134,7 @@ export default function Sidebar() {
         'Scolarité',
         'Salaires Personnel',
         'Salaires Formateurs',
+        'Heures vacataires',
       ];
       if (fGroup.includes(route.label)) return hasAccess(perms.can_manage_finance);
 
@@ -411,13 +412,7 @@ export default function Sidebar() {
             >
               <ListItemButton
                 onClick={() => {
-                  localStorage.removeItem('token');
-                  localStorage.removeItem('refreshToken');
-                  localStorage.removeItem('user');
-                  localStorage.removeItem('user_role');
-                  localStorage.removeItem('user_permissions');
-                  localStorage.removeItem('loginTime');
-                  document.cookie = 'token=; Max-Age=-99999999; path=/';
+                  clearSession();
                   handleNavigate('/login');
                 }}
                 sx={{

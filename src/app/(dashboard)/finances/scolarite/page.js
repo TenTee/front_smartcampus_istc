@@ -47,8 +47,6 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import SchoolIcon from '@mui/icons-material/School';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
-import PeopleIcon from '@mui/icons-material/People';
-import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import {
   anneesAcademiquesService,

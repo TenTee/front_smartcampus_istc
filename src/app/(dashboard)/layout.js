@@ -8,6 +8,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { AcademicYearProvider } from '../../context/AcademicYearContext';
 import { SidebarProvider, useSidebar } from '../../context/SidebarContext';
 import { hasReadAccess } from '../../utils/permissions';
+import { clearSession } from '../../services/api/client';
 
 const ROUTE_PERMISSION_MAP = {
   '/students': 'can_manage_etudiants',
@@ -23,6 +24,7 @@ const ROUTE_PERMISSION_MAP = {
   '/staff': 'can_manage_rh',
   '/leaves': 'can_manage_rh',
   '/salaires': 'can_manage_finance',
+  '/coordonnateurs': 'can_manage_pedagogie',
 };
 
 const ADMIN_ONLY_ROUTES = ['/users', '/roles', '/system', '/settings'];
@@ -105,24 +107,28 @@ export default function DashboardLayout({ children }) {
       return;
     }
 
+    // Un formateur (non administrateur) n'a pas accès au tableau de bord d'administration.
+    let isSuperuser = false;
+    try {
+      isSuperuser = Boolean(JSON.parse(localStorage.getItem('user_permissions') || '{}').is_superuser);
+    } catch {}
+    if (role === 'formateur' && localStorage.getItem('is_formateur') === 'true' && !isSuperuser) {
+      router.push('/formateur-portal');
+      return;
+    }
+
     const loginTime = localStorage.getItem('loginTime');
     if (loginTime) {
       const elapsed = Date.now() - parseInt(loginTime, 10);
       const sixHours = 6 * 60 * 60 * 1000;
 
       if (elapsed > sixHours) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('loginTime');
-        localStorage.removeItem('user_permissions');
-        document.cookie = 'token=; Max-Age=0; path=/;';
+        clearSession();
         router.push('/login');
       } else {
         const remaining = sixHours - elapsed;
         const timeout = setTimeout(() => {
-          localStorage.removeItem('token');
-          localStorage.removeItem('loginTime');
-          localStorage.removeItem('user_permissions');
-          document.cookie = 'token=; Max-Age=0; path=/;';
+          clearSession();
           router.push('/login');
         }, remaining);
         return () => clearTimeout(timeout);

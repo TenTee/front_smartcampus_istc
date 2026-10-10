@@ -13,9 +13,7 @@ import {
   TableHead,
   TableRow,
   Paper,
-  IconButton,
   TextField,
-  InputAdornment,
   Snackbar,
   Alert,
   CircularProgress,
@@ -23,7 +21,6 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  TablePagination,
   Tabs,
   Tab,
   FormControl,
@@ -35,12 +32,7 @@ import {
   Tooltip,
   Chip,
 } from "@mui/material";
-import AddIcon from "@mui/icons-material/Add";
-import SearchIcon from "@mui/icons-material/Search";
-import EditIcon from "@mui/icons-material/Edit";
-import DeleteIcon from "@mui/icons-material/Delete";
 import DownloadIcon from "@mui/icons-material/Download";
-import PrintIcon from "@mui/icons-material/Print";
 import AssignmentIcon from "@mui/icons-material/Assignment";
 import PersonIcon from "@mui/icons-material/Person";
 import GridOnIcon from "@mui/icons-material/GridOn";
@@ -64,10 +56,9 @@ import {
   configurationEtablissementService,
   parametresGlobauxService,
 } from "../../../services/api/services";
-import { getApiErrorMessage, getMediaUrl } from "../../../services/api/client";
+import { getApiErrorMessage } from "../../../services/api/client";
 import { useAcademicYear } from "../../../context/AcademicYearContext";
 import TableSkeleton from "../../../components/common/TableSkeleton";
-import ErrorState from "../../../components/common/ErrorState";
 import GradeFormModal from "../../../components/grades/GradeFormModal";
 import ReleveNotesTemplate from "../../../components/grades/ReleveNotesTemplate";
 import {
@@ -135,10 +126,7 @@ export default function GradesPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [validating, setValidating] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
 
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(20);
 
   const [openModal, setOpenModal] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
@@ -323,16 +311,6 @@ export default function GradesPage() {
     pdf.save(`rattrapages_${selectedClasse?.nom?.replace(/\s+/g, "_") || "toutes_classes"}.pdf`);
   };
 
-  const filteredNotes = useMemo(() => {
-    return notes.filter((n) => {
-      const eName = n.etudiant?.nom || n.etudiant_nom || "";
-      const mName = n.module?.intitule || n.module_nom || "";
-      return (
-        eName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        mName.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    });
-  }, [notes, searchTerm]);
 
   const filteredModules = useMemo(() => {
     if (!batchParams.classe) return [];
@@ -365,19 +343,6 @@ export default function GradesPage() {
     });
   }, [batchParams.classe, classesList, modulesList]);
 
-  const filteredEvaluations = useMemo(() => {
-    return evaluationsList.filter((ev) => {
-      const matchClasse =
-        !batchParams.classe ||
-        String(ev.classe) === String(batchParams.classe) ||
-        String(ev.classe_id) === String(batchParams.classe);
-      const matchModule =
-        !batchParams.module ||
-        String(ev.module) === String(batchParams.module) ||
-        String(ev.module_id) === String(batchParams.module);
-      return matchClasse && matchModule;
-    });
-  }, [batchParams.classe, batchParams.module, evaluationsList]);
 
   useEffect(() => {
     // Reset module and evaluation when class changes
@@ -602,13 +567,6 @@ export default function GradesPage() {
   };
 
 
-  const computeNoteFinale = (noteCC, noteSN) => {
-  const cc = parseFloat(noteCC) || 0;
-  const sn = parseFloat(noteSN) || 0;
-
-  return (cc + sn).toFixed(2);
-
-  };
 
 const handleBatchInputChange = (index, field, value) => {
   const newData = [...batchData];
@@ -688,18 +646,6 @@ const handleBatchInputChange = (index, field, value) => {
     return Object.keys(errors).length === 0;
   };
 
-  const handleEdit = (note) => {
-    setForm({
-      id: note.id,
-      etudiant: note.etudiant?.id || note.etudiant,
-      module: note.module?.id || note.module,
-      classe: note.classe?.id || note.classe || "",
-      note_cc: note.note_cc || "",
-      note_sn: note.note_sn || "",
-    });
-    setFormErrors({});
-    setOpenModal(true);
-  };
 
   const handleDelete = async () => {
     if (!canWriteGrades) {
@@ -777,54 +723,10 @@ const handleBatchInputChange = (index, field, value) => {
     }
   };
 
-  const activeStudentObj = useMemo(() => {
-    return students.find(
-      (s) => String(s.id) === String(selectedStudentForTranscript),
-    );
-  }, [students, selectedStudentForTranscript]);
 
-  const studentTranscriptNotes = useMemo(() => {
-    if (!selectedStudentForTranscript) return [];
-    return notes.filter((n) => {
-      const estId = n.etudiant?.id || n.etudiant || n.etudiant_id;
-      return String(estId) === String(selectedStudentForTranscript);
-    });
-  }, [notes, selectedStudentForTranscript]);
 
-  const generalAverage = useMemo(() => {
-    if (!studentTranscriptNotes.length) return 0;
-    const total = studentTranscriptNotes.reduce(
-      (acc, curr) => acc + parseFloat(curr.note_finale || curr.moyenne || 0),
-      0,
-    );
-    return (total / studentTranscriptNotes.length).toFixed(2);
-  }, [studentTranscriptNotes]);
 
-  const transcriptBySemester = useMemo(() => {
-    const groups = {
-      "Semestre 1": [],
-      "Semestre 2": [],
-    };
 
-    studentTranscriptNotes.forEach((note) => {
-      const semestre = note.module_semestre || note.session || "Semestre 1";
-      if (!groups[semestre]) {
-        groups[semestre] = [];
-      }
-      groups[semestre].push(note);
-    });
-
-    return Object.entries(groups).filter(([, items]) => items.length > 0);
-  }, [studentTranscriptNotes]);
-
-  const semesterAverage = (items) => {
-    if (!items.length) return null;
-    const total = items.reduce(
-      (acc, curr) => acc + parseFloat(curr.note_finale || curr.moyenne || 0),
-      0,
-    );
-    return (total / items.length).toFixed(2);
-  };
 
   if (!canReadGrades) {
     return (

@@ -27,7 +27,6 @@ import { etudiantsService } from '../../../services/api/services';
 import { useRouter } from 'next/navigation';
 import StudentCard from '../../../components/students/StudentCard';
 
-import { formatDate } from '../../../utils/formatters';
 
 export default function StudentDashboard() {
   const [student, setStudent] = useState(null);
@@ -122,7 +121,7 @@ export default function StudentDashboard() {
                   onClick={() => setOpenCardDialog(true)}
                   sx={{ mt: 3, borderRadius: 3, textTransform: 'none', fontWeight: 600 }}
                 >
-                  Voir ma carte d'étudiant
+                  Voir ma carte d&apos;étudiant
                 </Button>
               </Box>
             </CardContent>
@@ -213,12 +212,12 @@ export default function StudentDashboard() {
         maxWidth="md"
       >
         <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span>Ma Carte d'Étudiant Digitalisée</span>
+          <span>Ma Carte d&apos;Étudiant Digitalisée</span>
         </DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', p: 4, bgcolor: '#f0f2f5' }}>
           <StudentCard student={student} flipable={true} />
           <Typography variant="caption" color="text.secondary" sx={{ mt: 2, fontStyle: 'italic', textAlign: 'center' }}>
-            Document numérique d'identification réservé à la consultation. Pour obtenir une carte PVC officielle imprimée, veuillez vous adresser au secrétariat de l'établissement.
+            Document numérique d&apos;identification réservé à la consultation. Pour obtenir une carte PVC officielle imprimée, veuillez vous adresser au secrétariat de l&apos;établissement.
           </Typography>
         </DialogContent>
         <DialogActions>
