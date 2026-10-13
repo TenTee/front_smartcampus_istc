@@ -223,7 +223,7 @@ export default function LoginPage() {
           <Box sx={{ textAlign: "center", mb: { xs: 3, sm: 4 } }}>
             <Box
               component="img"
-              src="/logoistc2.png"
+              src="/LOGO SMART CAMPUS.svg"
               alt="Logo de l'ISTC"
               sx={{
                 display: "block",
